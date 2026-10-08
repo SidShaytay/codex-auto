@@ -742,6 +742,9 @@ async function launchInvocation(options: {
   let quotaRelevantOutput = '';
   let pendingPrePromptQuotaTimer: NodeJS.Timeout | null = null;
   let pendingPostPromptQuotaTimer: NodeJS.Timeout | null = null;
+  // Interactive startup replays history before drawing its live prompt.
+  // A short pre-prompt timeout can kill a healthy account during that replay.
+  const prePromptGraceMs = options.interactive ? postPromptQuotaConfirmationMs : prePromptQuotaDecisionGraceMs;
 
   const clearPendingPrePromptQuotaTimer = (): void => {
     if (!pendingPrePromptQuotaTimer) {
@@ -923,7 +926,7 @@ async function launchInvocation(options: {
         quotaDetected = true;
         quotaRelevantOutput = delayedEvaluation.relevantOutput;
         stopPtyForQuota();
-      }, prePromptQuotaDecisionGraceMs);
+      }, prePromptGraceMs);
     };
 
     const dataDisposable = ptyProcess.onData((data) => {
@@ -1039,7 +1042,7 @@ async function launchInvocation(options: {
       quotaDetected = true;
       quotaRelevantOutput = delayedEvaluation.relevantOutput;
       stopChildForQuota();
-    }, prePromptQuotaDecisionGraceMs);
+    }, prePromptGraceMs);
   };
 
   child.stdout?.on('data', (chunk: Buffer | string) => {

@@ -955,6 +955,64 @@ console.log('available account resumed');
     }
   });
 
+  test('interactive cursor redraw finishes replay before quota rotation', async () => {
+    const appHome = await createTempAppHome();
+    const codexHome = await createTempAppHome('codex-home-');
+    const logPath = path.join(appHome, 'fake-codex.log');
+    try {
+      await seedCodexHome(codexHome);
+      await seedState(appHome, {
+        version: 1,
+        accounts: ['a', 'b'],
+        currentIndex: 0,
+        preferredAccountName: 'a',
+        lastSuccessfulAccount: null,
+        lastSessionId: null,
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      });
+      await seedAccount(appHome, 'a', { account: 'a', token: 'a-token' });
+      await seedAccount(appHome, 'b', { account: 'b', token: 'b-token' });
+
+      const result = await runManagedSession({
+        appHome,
+        codexHome,
+        workspaceDir: process.cwd(),
+        codexCommand: `node ${path.resolve(process.cwd(), 'tests/fixtures/fake-codex.mjs')}`,
+        env: {
+          ...process.env,
+          FAKE_CODEX_LOG: logPath,
+          FAKE_CODEX_SESSION_ID: 'session-live-prompt',
+          FAKE_CODEX_PRIMARY_RETRY_AT: '7:37 PM',
+          FAKE_CODEX_RESUME_CURSOR_REPLAY: '1',
+          FAKE_CODEX_OLD_RETRY_AT: '7:37 PM',
+          FAKE_CODEX_REPLAY_OLD_QUOTA_DELAY_MS: '500',
+          FAKE_CODEX_LIVE_PROMPT_DELAY_MS: '1800'
+        },
+        stdin: new TtyInputStream() as TtyInputStream & NodeJS.ReadStream,
+        stdout: new TtyCaptureStream(),
+        stderr: new TtyCaptureStream(),
+        interactive: true
+      });
+
+      expect(result.switchCount).toBe(1);
+      expect(result.finalAccount).toBe('b');
+      expect(result.exhaustedAll).toBe(false);
+      expect(result.exitCode).toBe(0);
+      await expect(loadState(appHome)).resolves.toMatchObject({
+        currentIndex: 1,
+        lastSuccessfulAccount: 'b',
+        retryAvailabilityByAccount: {
+          a: {
+            displayText: '7:37 PM'
+          }
+        }
+      });
+    } finally {
+      await cleanupTempDir(appHome);
+      await cleanupTempDir(codexHome);
+    }
+  });
+
   test('records retry time from the latest quota prompt instead of replayed historical output on resume', async () => {
     const appHome = await createTempAppHome();
     const codexHome = await createTempAppHome('codex-home-');
@@ -1234,7 +1292,7 @@ process.exit(0);
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);
     }
-  });
+  }, 10000);
 
   test('non-interactive mode waits briefly for the bound session id to be persisted before rotating', async () => {
     const appHome = await createTempAppHome();
@@ -1334,7 +1392,7 @@ process.exit(0);
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);
     }
-  });
+  }, 10000);
 
   test('interactive mode treats Ctrl-C during a quota prompt as a user interrupt instead of exhausting accounts', async () => {
     const appHome = await createTempAppHome();

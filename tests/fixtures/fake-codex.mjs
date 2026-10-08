@@ -234,6 +234,14 @@ if (!waitingOnQuota && commandArgs[0] === 'resume') {
     process.exit(0);
   }
 
+  if (process.env.FAKE_CODEX_RESUME_CURSOR_REPLAY === '1') {
+    pendingAsyncExit = true;
+    writeQuotaMessage(oldRetryAt);
+    setTimeout(() => {
+      process.stdout.write('replayed history\u001b[30;1H› Continue\u001b[31;1H• Working (0s)');
+      setTimeout(() => process.exit(0), 100);
+    }, 1800);
+  } else
   if (process.env.FAKE_CODEX_RESUME_REPLAYS_STALE_QUOTA_BEFORE_LIVE_PROMPT === '1') {
     replayStalePromptThenQuotaBeforeLivePrompt();
   } else

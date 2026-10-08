@@ -48,7 +48,9 @@ function parseMeridiemTime(displayText: string): Date | null {
 }
 
 export function sanitizeTerminalOutput(output: string): string {
-  return stripAnsi(output)
+  // Cursor-positioned redraws start a new screen line without emitting LF.
+  // Keep that boundary before removing ANSI so prompt detection sees it.
+  return stripAnsi(output.replace(/\u001b\[[\d;]*[HfGdABEF]/g, '\n'))
     .replace(/\r/g, '\n')
     .replace(/[^\S\n]+/g, ' ')
     .replace(/\u0000/g, '');

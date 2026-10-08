@@ -471,7 +471,7 @@ env CODEX_AUTO_DEBUG=1 codex-auto --no-daemon -a never --no-alt-screen -s danger
 - **尚未配置账号：**运行 `codex-auto add <name>` 并完成登录，然后再次启动 `codex-auto`。
 - **找不到 Codex 可执行文件：**确保 `codex` 在 `PATH` 中，或将 `CODEX_AUTO_CODEX_BIN` 设置为其可执行文件路径。
 - **恢复时无法确认会话：**使用 Codex 的会话选择器选择目标会话。无法安全识别会话时，自动恢复会停止。
-- **所有账号额度已耗尽：**查看 `codex-auto list` 中记录的重试时间，并等待额度恢复。
+- **所有账号额度已耗尽：**查看 `codex-auto list` 中记录的重试时间，并在 Codex 中确认当前可用额度。交互启动时，如果尚未识别到提示符，会等待五秒供历史记录回放完成后再处理额度错误；最新提示符之前的旧错误消息不会将恢复后的账号标记为额度耗尽。如果回放耗时超过五秒，这项基于时间的保护措施仍可能误判。
 
 ## 已知限制
 

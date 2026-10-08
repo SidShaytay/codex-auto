@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+### Fixed
+
+- Interactive quota detection recognizes cursor-positioned prompts and allows five seconds for startup history replay before acting on quota text without a recognized prompt. This mitigates the reproduced false account-exhaustion stop; replay that exceeds the grace period can still be misclassified. No account migration is required. Event-based detection and broader terminal acceptance remain pending.
+
 ## 0.3.0
 
 ### Changed

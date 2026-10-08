@@ -171,7 +171,8 @@ Required whenever account switching, launch arguments, or daemon policy changes.
 4. In resumed Codex, check `/usage` and `/status`. Both must report the newly selected account consistently; it must not be marked exhausted solely from the previous account's state.
 5. Repeat with flags before an explicit `resume <session-id>` and with two concurrent terminal sessions. Switching one must not interfere with the other.
 6. Repeat with explicit `--no-daemon`; confirm the flag appears once in sanitized launch diagnostics. Verify `--remote`, `--remote=unix:///tmp/example.sock`, `--remote-auth-token-env`, and `agents` fail clearly before launch.
-7. Exit normally and verify normal shell input.
+7. In Ghostty → Zellij, resume a conversation whose history contains a quota error and interrupted turns. Allow hook review to finish. Confirm cursor-positioned redraws and delayed history replay do not exhaust an available account before its live prompt is drawn. Verify input and resizing after replay.
+8. Exit normally and verify normal shell input.
 
 Accept when daemon opt-out, approval/sandbox settings, and supported launch overrides remain effective on resume, account status agrees across both views, and no unrelated Codex processes need to be killed. Automated fixture checks verify forwarded flags, not the external Codex daemon's account state.
 

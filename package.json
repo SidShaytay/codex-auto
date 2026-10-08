@@ -1,15 +1,15 @@
 {
   "name": "codex-auto",
-  "version": "0.3.0",
-  "description": "Automatic multi-account session runner for the OpenAI Codex CLI.",
+  "version": "0.3.1",
+  "description": "Automatic multi-account session runner for the OpenAI Codex CLI. Forked off https://github.com/xhyqaq/codex-auto",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xhyqaq/codex-auto.git"
+    "url": "git+https://github.com/SidShaytay/codex-auto.git"
   },
-  "homepage": "https://github.com/xhyqaq/codex-auto",
+  "homepage": "https://github.com/SidShaytay/codex-auto",
   "bugs": {
-    "url": "https://github.com/xhyqaq/codex-auto/issues"
+    "url": "https://github.com/SidShaytay/codex-auto/issues"
   },
   "keywords": [
     "codex",

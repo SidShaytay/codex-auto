@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { extractQuotaRetryAvailability, hasQuotaError } from '../../src/lib/detection.js';
+import { extractQuotaRetryAvailability, getOutputSinceLatestPrompt, hasQuotaError } from '../../src/lib/detection.js';
 
 function formatMeridiemTime(date: Date): string {
   const hours24 = date.getHours();
@@ -10,6 +10,12 @@ function formatMeridiemTime(date: Date): string {
 }
 
 describe('quota detection', () => {
+  test('recognizes cursor-positioned prompts after historical quota redraws', () => {
+    const output = "old quota text\u001b[30;1H› Continue\u001b[31;1H• Working (0s)";
+    expect(getOutputSinceLatestPrompt(output)).toContain('Working (0s)');
+    expect(getOutputSinceLatestPrompt(output)).not.toContain('old quota text');
+  });
+
   test('detects the observed codex quota exhaustion prompt', () => {
     expect(
       hasQuotaError("■ You've hit your usage limit. To get more access now, send a request to your admin.")
