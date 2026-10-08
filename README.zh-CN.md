@@ -1,10 +1,8 @@
-# codex-auto
+# codex-auto 是什么？
+
+`codex-auto` 是 `codex` CLI 的包装器，会在当前账号的 token 额度耗尽时自动切换账号。你可以根据需要购买多个账号，让工作持续进行。凭据仅保存在你的本地机器上。
 
 [English](./README.md) | 中文
-
-`codex-auto` 是 `codex` CLI 的多账号切换器。
-
-它将账号凭据保存在 `~/.codex-auto/accounts/`，基于现有配置启动受管 Codex 会话，并在当前账号触发额度限制时自动切换到下一个账号。
 
 ## 前置要求
 

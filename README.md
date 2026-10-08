@@ -1,8 +1,8 @@
-# codex-auto
+# What is codex-auto?
+
+`codex-auto` is a wrapper around `codex` CLI to auto-switch accounts when your current account runs out of tokens. Buy as many accounts as you need to keep your work ongoing. Credentials stay local on your machine.
 
 English | [简体中文](./README.zh-CN.md)
-
-A wrapper around `codex` CLI to switch between multiple account to keep going without stopping sessions or work.
 
 ## Prerequisites
 

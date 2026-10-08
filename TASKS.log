@@ -40,3 +40,7 @@ AGENTS.md requires every code change, bug fix, and feature addition to enter TAS
 Recorded implementation plan before code edits. Managed interactive launches/resumes enforce and deduplicate --no-daemon. Reject remote endpoint/auth options and shared-server commands before account import; preserve literal argument values and non-interactive exec. Tests and fixture expectations updated. Build passed; full suite114/115, sole existing missing-session warning assertion still failing. Version and root lockfile now0.3.0; changelog, SemVer guidance, README mirrors and scenario12 updated. Deferred daemon/desktop compatibility documented as future research without promising shared authentication support. Local links/fences/version consistency checked. Real terminal acceptance remains pending. Temporary ISSUE.report.md excluded; user README wording preserved.
 
 S15 installation checkpoint:0fcf9ff and19a7e37 pushed; installed clean0.3.0 source snapshot verified outside checkout. All five incompatible endpoint/server command cases rejected using temporary empty app home. No live credentials accessed.
+
+## 2026-10-08 — README introduction
+
+Preserved user-authored English introduction and translated it into Chinese. Checked README local links, code fences and whitespace. Documentation-only; existing114/115 runtime result and pending terminal acceptance unchanged. User requested commit/push and clean source reinstall before personal testing.
