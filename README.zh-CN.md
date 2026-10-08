@@ -396,17 +396,27 @@ realpath (command -v codex-auto)
 
 最后一条命令使用 fish 语法；bash 中请用 `realpath "$(command -v codex-auto)"`。解析后的路径应指向当前检出版本的 `dist/index.js`。`npm link` 将全局命令链接到本地检出目录（[npm link 参考](https://docs.npmjs.com/cli/v11/commands/npm-link/)），可能替换该 npm 前缀下的已有命令。修改源码后重新构建即可；链接仍有效，构建也会确保 CLI 入口文件具有执行权限。如果 `PATH` 中其他安装的位置更靠前，请使用显式的 `node /path/to/your/fork/dist/index.js` 命令。
 
-### 安装 fork 的固定快照
+### 将此分支安装为系统命令
 
-要安装固定的本地构建，而不是开发链接：
+在分支目录中运行：
 
 ```sh
-npm run build
-npm pack --ignore-scripts
-npm install -g ./codex-auto-0.2.8.tgz --ignore-scripts
+npm run install:local
+command -v codex-auto
+codex-auto --version
 ```
 
-包版本变化后，请使用 `npm pack` 打印的文件名。这会安装打包的 fork；之后修改源码需要重新打包和安装。依赖仍从已配置的 npm registry 下载，关闭生命周期脚本后，原生依赖可能需要执行经过审查的初始化步骤。编辑、构建和测试循环建议直接运行当前检出版本。
+这会构建当前检出版本，并将其快照安装到配置的 npm 全局前缀中。安装使用本地包，而不是已经发布的 `codex-auto` 版本。依赖仍从配置的 npm 注册表下载。安装会禁用生命周期脚本；如果平台没有合适的内置二进制文件，原生依赖可能需要执行经过审查的配置步骤。
+
+修改源码后，再运行 `npm run install:local` 更新已安装的命令。仅运行 `npm run build` 只会更新检出目录，已安装的快照保持不变。`npm link` 是可选的实时开发链接方式。
+
+使用所选 Codex 设置启动已安装的分支：
+
+```sh
+codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+运行分支时，可用 `env CODEX_AUTO_UPDATE_CHECK=0 codex-auto ...` 禁用上游更新提示。安装命令使用 [npm 的 `--install-links` 选项](https://docs.npmjs.com/cli/v11/commands/npm-install/)，安装副本而不是指向检出目录的链接。
 
 ## 故障排查
 

@@ -33,6 +33,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json && chmod +x dist/index.js",
     "test": "vitest run",
+    "install:local": "npm run build && npm install --global . --install-links --ignore-scripts --no-audit --no-fund",
     "prepare": "npm run build",
     "prepack": "npm run build"
   },

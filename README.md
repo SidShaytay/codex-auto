@@ -396,17 +396,27 @@ realpath (command -v codex-auto)
 
 The last command uses fish syntax; in bash, use `realpath "$(command -v codex-auto)"`. The resolved path should end at this checkout's `dist/index.js`. `npm link` makes the global command point to the local checkout ([npm link reference](https://docs.npmjs.com/cli/v11/commands/npm-link/)); it can replace the existing command in that npm prefix. Rebuild after source edits; the link stays valid, and the build keeps the CLI entry point executable. If another installation appears earlier on `PATH`, use the explicit `node /path/to/your/fork/dist/index.js` command.
 
-### Install a snapshot of the fork
+### Install this fork as your system command
 
-For a fixed local build rather than a development link:
+From the fork directory, run:
 
 ```sh
-npm run build
-npm pack --ignore-scripts
-npm install -g ./codex-auto-0.2.8.tgz --ignore-scripts
+npm run install:local
+command -v codex-auto
+codex-auto --version
 ```
 
-Use the filename printed by `npm pack` if the package version changes. This installs the packed fork; subsequent source edits require a new pack and installation. Dependency downloads still come from the configured npm registry, and native dependencies may need reviewed setup steps when lifecycle scripts are disabled. Prefer the direct checkout command for the edit/build/test cycle.
+This builds the checkout and installs a snapshot into your configured npm global prefix. It uses the local package, not the published `codex-auto` release. Dependencies still come from the configured npm registry. Installation disables lifecycle scripts; native dependencies may need reviewed setup steps on platforms without a suitable bundled binary.
+
+After changing source, run `npm run install:local` again to update the installed command. `npm run build` alone updates only the checkout; the installed snapshot stays unchanged. `npm link` is an optional alternative for a live development link.
+
+Start the installed fork with your chosen Codex settings:
+
+```sh
+codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+Use `env CODEX_AUTO_UPDATE_CHECK=0 codex-auto ...` to disable upstream update prompts when running the fork. The install command uses [npm's `--install-links` option](https://docs.npmjs.com/cli/v11/commands/npm-install/) to install a copy rather than a link to the checkout.
 
 ## Troubleshooting
 
