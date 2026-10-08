@@ -147,7 +147,7 @@ In an interactive terminal, `codex-auto` periodically checks npm for a newer `co
 
 ## Passing Through Codex Arguments
 
-Any arguments not recognized as `codex-auto` commands (`activate`, `add`, `remove`, `list`, `use`, `version`) are forwarded directly to `codex`:
+Any arguments not recognized as `codex-auto` commands (`activate`, `add`, `remove`, `list`, `use`, `version`, `diagnostics`) are forwarded directly to `codex`:
 
 ```bash
 # Pass a prompt
@@ -308,6 +308,12 @@ Concurrent run behavior:
 - `CODEX_AUTO_UPDATE_CHECK`
   Set to `0` to disable interactive update prompts.
 
+- `CODEX_AUTO_DEBUG`
+  Set to `1` for live sanitized launch and recovery details on stderr. Automatic incident collection is always enabled.
+
+- `CODEX_AUTO_DIAGNOSTICS_RETENTION_DAYS`
+  Generated report retention in days. Default: `30`; for example, `7` keeps unpinned reports for one week.
+
 Example:
 
 ```bash
@@ -329,6 +335,7 @@ codex-auto activate [name]
 codex-auto remove <name>
 codex-auto version
 codex-auto --version
+codex-auto diagnostics
 
 # Managed session (default)
 codex-auto
@@ -417,6 +424,41 @@ codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
 ```
 
 Use `env CODEX_AUTO_UPDATE_CHECK=0 codex-auto ...` to disable upstream update prompts when running the fork. The install command uses [npm's `--install-links` option](https://docs.npmjs.com/cli/v11/commands/npm-install/) to install a copy rather than a link to the checkout.
+
+## Automatic diagnostics
+
+The wrapper records launch and recovery context from the start of each run. A quota switch, exhausted-account stop, recovery failure, or abnormal exit automatically saves a sanitized report and prints its location. No debug flag or post-incident command is required.
+
+Reports live in `~/.codex-auto/diagnostics/` (or `<CODEX_AUTO_HOME>/diagnostics/`). They include wrapper/build identity, recent events, session-binding state, and explicit launch-policy summaries. Account/run identifiers are anonymized. Reports exclude credentials, configuration contents, environment values, prompts, transcripts, workspace paths, and raw session IDs. They do not capture the external Codex daemon's internal state or network traffic.
+
+Attach the generated `incident-*.json` file when reporting a problem. You can also export current sanitized context:
+
+```sh
+codex-auto diagnostics > codex-auto-diagnostics.json
+```
+
+Reports expire after 30 days by default. To use 7 days, set this environment variable when launching the wrapper:
+
+```sh
+env CODEX_AUTO_DIAGNOSTICS_RETENTION_DAYS=7 codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+Keep the latest report while investigating, then release it when finished:
+
+```sh
+codex-auto diagnostics --keep latest
+codex-auto diagnostics --release latest
+```
+
+You can use a report's filename instead of `latest`. Kept reports survive age and count cleanup. Cleanup runs at session startup and when diagnostics are collected; it does not use a background service. Generated reports are also bounded to 20 unkept files. Retention applies to generated reports, not underlying event logs or run records.
+
+For live sanitized launch/switch details on stderr, enable optional debug output before starting:
+
+```sh
+env CODEX_AUTO_DEBUG=1 codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+A hard kill or power loss cannot trigger a final report; the already recorded events remain available for manual export. Automatic collection is best effort and does not prevent account recovery if writing a report fails.
 
 ## Troubleshooting
 

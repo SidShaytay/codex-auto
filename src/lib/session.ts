@@ -4,8 +4,9 @@ import { randomUUID } from 'node:crypto';
 import type { Writable } from 'node:stream';
 import { spawn as spawnPty } from 'node-pty';
 import path from 'node:path';
-import { createSessionLogger } from './logger.js';
+import { createSessionLogger, type LaunchPolicySummary } from './logger.js';
 import { buildCodexShellCommand, resolveCodexCommand } from './codex-bin.js';
+import { pruneIncidentDiagnostics, writeIncidentDiagnostics } from './diagnostics.js';
 import { extractQuotaRetryAvailability, getOutputSinceLatestPrompt, hasQuotaError, sanitizeTerminalOutput } from './detection.js';
 import { markAccountUsed } from './accounts.js';
 import { readTextIfExists } from './fs.js';
@@ -258,6 +259,39 @@ function extractResumePolicyArgs(args: string[]): string[] {
     break;
   }
   return result;
+}
+
+function summarizeLaunchPolicy(args: string[]): LaunchPolicySummary {
+  const summary: LaunchPolicySummary = {
+    noDaemon: args.includes('--no-daemon'),
+    sandbox: 'default',
+    approval: 'default',
+    configOverrides: 0,
+    hasProfile: false,
+    hasModelOverride: false,
+    remote: false
+  };
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    const option = valuedOption(arg);
+    if (!option) continue;
+    const value = option.inline
+      ? arg.startsWith('--') || arg[2] === '=' ? arg.slice(arg.indexOf('=') + 1) : arg.slice(2)
+      : args[++index];
+    if (option.name === '-s' || option.name === '--sandbox') {
+      summary.sandbox = ['read-only', 'workspace-write', 'danger-full-access'].includes(value ?? '')
+        ? value as LaunchPolicySummary['sandbox'] : 'overridden';
+    }
+    if (option.name === '-a' || option.name === '--ask-for-approval') {
+      summary.approval = ['on-request', 'never'].includes(value ?? '')
+        ? value as LaunchPolicySummary['approval'] : 'overridden';
+    }
+    if (option.name === '-c' || option.name === '--config') summary.configOverrides += 1;
+    if (option.name === '-p' || option.name === '--profile') summary.hasProfile = true;
+    if (option.name === '-m' || option.name === '--model') summary.hasModelOverride = true;
+    if (option.name === '--remote') summary.remote = true;
+  }
+  return summary;
 }
 
 type InitialResumeTarget = {
@@ -1042,7 +1076,6 @@ function buildInstanceId(): string {
 
 export async function runManagedSession(options: RunManagedSessionOptions): Promise<RunManagedSessionResult> {
   await ensureAppLayout(options.appHome);
-  const logger = await createSessionLogger(options.appHome);
   const stdout = options.stdout ?? (process.stdout as OutputLike);
   const stderr = options.stderr ?? (process.stderr as OutputLike);
   const stdin = options.stdin ?? process.stdin;
@@ -1050,6 +1083,20 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
     ...process.env,
     ...options.env
   };
+  // Opportunistic retention cleanup; an unavailable diagnostics directory must
+  // not stop normal Codex startup.
+  try { await pruneIncidentDiagnostics(options.appHome, { env }); } catch { /* best effort */ }
+  const logger = await createSessionLogger(options.appHome, {
+    debugOutput: env.CODEX_AUTO_DEBUG === '1' ? stderr : undefined,
+    onIncident: async (reason) => {
+      try {
+        const reportPath = await writeIncidentDiagnostics(options.appHome, reason, { env });
+        stderr.write(`\n[codex-auto] Incident diagnostics saved: ${reportPath}\n`);
+      } catch {
+        stderr.write('\n[codex-auto] Could not save incident diagnostics; account recovery will continue.\n');
+      }
+    }
+  });
   const codexHome = options.codexHome ?? resolveCodexHome(env);
   const codexCommand = options.codexCommand ?? resolveCodexCommand(env);
   const interactive =
@@ -1134,7 +1181,9 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
         account: current.name,
         resume: !firstRun,
         sessionId: firstRun ? null : lastSessionId,
-        instanceId
+        instanceId,
+        sessionBound: lastSessionId !== null,
+        policy: summarizeLaunchPolicy(resumePolicyArgs)
       });
 
       const firstRunArgs = buildFirstRunArgs(options.extraArgs ?? []);
@@ -1164,6 +1213,16 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
             policyArgs: resumePolicyArgs
           });
 
+      await logger.log('invocation_end', {
+        account: current.name,
+        instanceId,
+        exitCode: result.exitCode,
+        quotaDetected: result.quotaError,
+        missingSessionError: hasMissingSessionError(result.output),
+        interrupted: result.interrupted,
+        outputCharacters: result.output.length
+      });
+
       const discoveredSessionId: string | null = firstRun && !lastSessionId
         ? await waitForSessionId({
             instanceDir,
@@ -1190,6 +1249,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
 
       if (!firstRun && result.exitCode !== 0 && hasMissingSessionError(result.output)) {
         sessionBindingLost = true;
+        await logger.log('recovery_failed', { sessionBound: true, exitCode: result.exitCode });
         stderr.write('\n[codex-auto] Unable to safely resume bound session: saved session id is no longer available.\n');
         await writeManagedRunState(options.appHome, {
           runId,
@@ -1282,7 +1342,10 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
       const next = pickNextAccount(latestState.accounts, current.index, exhausted);
       await logger.log('quota_switch', {
         from: current.name,
+        to: next?.name ?? null,
         exhausted: [...exhausted],
+        switchCount: switchCount + (next ? 1 : 0),
+        sessionBound: lastSessionId !== null,
         instanceId
       });
 
@@ -1318,6 +1381,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
 
       if (!lastSessionId) {
         sessionBindingLost = true;
+        await logger.log('recovery_failed', { sessionBound: false, exitCode: result.exitCode });
         stderr.write('\n[codex-auto] Unable to safely resume bound session: no session id was captured for this run.\n');
         await writeManagedRunState(options.appHome, {
           runId,
@@ -1359,6 +1423,9 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
         sessionBindingLost
       });
     }
+  } catch (error) {
+    try { await logger.log('abnormal_exit', { sessionBound: lastSessionId !== null }); } catch { /* preserve original failure */ }
+    throw error;
   } finally {
     await cleanupInstanceOverlay(instanceDir);
   }

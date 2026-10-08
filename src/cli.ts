@@ -15,6 +15,7 @@ import { loadState } from './lib/state.js';
 import { ensureAppLayout } from './lib/runtime.js';
 import { runManagedSession } from './lib/session.js';
 import { maybePromptForUpdate } from './lib/update-check.js';
+import { collectDiagnostics, setIncidentKeep } from './lib/diagnostics.js';
 
 const require = createRequire(import.meta.url);
 const { name: packageName, version: packageVersion } = require('../package.json') as { name: string; version: string };
@@ -73,7 +74,7 @@ export function extractManagedOptions(argv: string[]): {
   return { accountName, codexHome, rest };
 }
 
-const ownCommands = new Set(['activate', 'add', 'remove', 'list', 'use', 'version']);
+const ownCommands = new Set(['activate', 'add', 'remove', 'list', 'use', 'version', 'diagnostics']);
 
 export function isOwnCommand(rest: string[]): boolean {
   if (rest.includes('--help') || rest.includes('-h')) return true;
@@ -87,7 +88,7 @@ function shouldPromptForUpdate(rest: string[]): boolean {
   if (rest.includes('--help') || rest.includes('-h')) return false;
   if (rest.includes('--version') || rest.includes('-V')) return false;
   const firstPositional = rest.find((a) => !a.startsWith('-'));
-  return firstPositional !== 'help' && firstPositional !== 'version';
+  return firstPositional !== 'help' && firstPositional !== 'version' && firstPositional !== 'diagnostics';
 }
 
 export async function runCli(argv: string[], options: CliRunOptions = {}): Promise<number> {
@@ -174,6 +175,21 @@ export async function runCli(argv: string[], options: CliRunOptions = {}): Promi
     stdout.write(`${packageVersion}\n`);
     exitCode = 0;
   });
+
+  program.command('diagnostics')
+    .description('Print a sanitized JSON report for troubleshooting')
+    .option('--keep <report>', 'Preserve latest or a report basename during investigation')
+    .option('--release <report>', 'Release a preserved report for automatic cleanup')
+    .action(async (command: { keep?: string; release?: string }) => {
+      if (command.keep && command.release) throw new Error('Choose either --keep or --release');
+      const changed = command.keep ?? command.release;
+      const report = changed ? await setIncidentKeep(appHome, changed, Boolean(command.keep)) : null;
+      stdout.write(`${JSON.stringify({
+        ...await collectDiagnostics({ appHome, packageVersion, env }),
+        ...(report ? { investigation: { report, pinned: Boolean(command.keep) } } : {})
+      }, null, 2)}\n`);
+      exitCode = 0;
+    });
 
   program
     .command('activate')

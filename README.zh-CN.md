@@ -308,6 +308,12 @@ codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
 - `CODEX_AUTO_UPDATE_CHECK`
   设置为 `0` 可关闭交互式更新提示。
 
+- `CODEX_AUTO_DEBUG`
+  设为 `1` 可在 stderr 中实时显示脱敏的启动和恢复信息。自动事故采集始终启用。
+
+- `CODEX_AUTO_DIAGNOSTICS_RETENTION_DAYS`
+  生成报告的保留天数。默认 `30`；例如 `7` 表示未保留的报告最多保存一周。
+
 示例：
 
 ```bash
@@ -329,6 +335,7 @@ codex-auto activate [name]
 codex-auto remove <name>
 codex-auto version
 codex-auto --version
+codex-auto diagnostics
 
 # 受管会话（默认）
 codex-auto
@@ -417,6 +424,41 @@ codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
 ```
 
 运行分支时，可用 `env CODEX_AUTO_UPDATE_CHECK=0 codex-auto ...` 禁用上游更新提示。安装命令使用 [npm 的 `--install-links` 选项](https://docs.npmjs.com/cli/v11/commands/npm-install/)，安装副本而不是指向检出目录的链接。
+
+## 自动诊断
+
+包装器从每次运行开始就记录启动和恢复上下文。额度触发切号、所有账号耗尽、恢复失败或异常退出时，会自动保存经过脱敏的报告并显示保存位置，无需启用调试参数或在事故后执行命令。
+
+报告保存在 `~/.codex-auto/diagnostics/`（或 `<CODEX_AUTO_HOME>/diagnostics/`）。内容包括包装器及构建标识、近期事件、会话绑定状态和显式启动策略摘要。账号和运行标识会匿名化。报告不包含凭据、配置内容、环境变量值、提示词、终端记录、工作区路径或原始会话 ID，也不会采集外部 Codex 守护进程的内部状态或网络流量。
+
+报告问题时，可附上自动生成的 `incident-*.json` 文件。也可导出当前脱敏上下文：
+
+```sh
+codex-auto diagnostics > codex-auto-diagnostics.json
+```
+
+默认在 30 天后清理报告。如需保留 7 天，在启动包装器时设置以下环境变量：
+
+```sh
+env CODEX_AUTO_DIAGNOSTICS_RETENTION_DAYS=7 codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+调查期间保留最新报告，完成后解除保留：
+
+```sh
+codex-auto diagnostics --keep latest
+codex-auto diagnostics --release latest
+```
+
+可使用报告文件名代替 `latest`。被保留的报告不会因时间或数量限制被清理。清理在会话启动和采集诊断时执行，不使用后台服务。未保留的报告数量还限制为 20 份。保留策略仅针对生成的报告，不清理底层事件日志或运行记录。
+
+如需在 stderr 中实时查看脱敏的启动和切号信息，请在启动前启用可选调试输出：
+
+```sh
+env CODEX_AUTO_DEBUG=1 codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+强制终止或断电无法触发最终报告，但已经记录的事件仍可供手动导出。自动采集会尽力完成；即使无法写入报告，也不会阻止账号恢复。
 
 ## 故障排查
 

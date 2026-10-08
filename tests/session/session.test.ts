@@ -230,6 +230,21 @@ console.log('available account resumed');
         { account: 'b', args: ['resume', ...policy, 'fresh-policy-session', 'Continue'] }
       ]);
       await expect(loadState(appHome)).resolves.toMatchObject({ lastSessionId: 'fresh-policy-session' });
+      // Evidence must exist automatically, without enabling debug or manually
+      // exporting diagnostics after the failure.
+      const incidentDir = path.join(appHome, 'diagnostics');
+      const reports = (await readdir(incidentDir)).filter((name) => name.endsWith('.json'));
+      expect(reports).toHaveLength(1);
+      const incidentText = await readFile(path.join(incidentDir, reports[0]!), 'utf8');
+      const incident = JSON.parse(incidentText);
+      expect(incident.reason).toBe('quota_switch');
+      expect(incident.events.map((event: { event: string }) => event.event)).toEqual(['launch', 'invocation_end', 'quota_switch']);
+      expect(incident.events[0].policy).toMatchObject({ noDaemon: true, approval: 'never', sandbox: 'danger-full-access' });
+      expect(incidentText).not.toContain('dummy-a');
+      expect(incidentText).not.toContain('dummy-b');
+      expect(incidentText).not.toContain('fresh-policy-session');
+      expect(incidentText).not.toContain(appHome);
+
     } finally {
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);

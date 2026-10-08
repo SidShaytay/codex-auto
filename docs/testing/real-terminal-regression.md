@@ -176,6 +176,14 @@ Accept when daemon opt-out, approval/sandbox settings, and supported launch over
 
 Current verification: automated results are recorded in `TASKS.md`; real terminal acceptance of this scenario remains pending until performed in a terminal application.
 
+### 13. Automatic incident reports and optional debug display
+
+Required when incident collection, debug output, or diagnostic messages change.
+
+Start with two controllable fixture accounts and the latest installed build. Trigger quota rotation without setting CODEX_AUTO_DEBUG. Confirm an incident JSON file is saved under the configured app home's diagnostics directory and its location is printed without corrupting the terminal input area. Repeat with CODEX_AUTO_DEBUG=1; inspect safe launch policy before and after rotation, then normal exit and shell input. Trigger a controlled recovery failure and verify its report is also generated. Check that no credentials, prompts, transcripts, raw session IDs, or account names appear in exported reports or debug lines.
+
+Accept when evidence is recorded from launch without opt-in, incident collection runs automatically, failures to write diagnostics do not block recovery, and redraw/input remain correct. Use `diagnostics --keep latest`, then `--release latest`, and confirm that this does not modify account credentials or conversation history. Privacy/retention are also checked by automated tests; rendered terminal behavior still needs real terminal acceptance.
+
 ## Record results
 
 - When a real-terminal regression reveals a new scenario, add it to this checklist before fixing the code.
