@@ -79,6 +79,163 @@ class TtyInputStream extends PassThrough {
 }
 
 describe('managed session runner', () => {
+  test.each([
+    {
+      name: 'the reported command with global valued flags before resume',
+      args: ['--no-daemon', '-a', 'never', '--no-alt-screen', '-s', 'danger-full-access', 'resume', 'policy-session'],
+      policy: ['--no-daemon', '-a', 'never', '--no-alt-screen', '-s', 'danger-full-access']
+    },
+    {
+      name: 'repeated config and long equals policy flags without picker or image arguments',
+      args: [
+        '--config', 'model="test-model"', 'resume', '--all', '--include-non-interactive',
+        '--no-daemon', '--config=features.example=true', '--sandbox=read-only', '--ask-for-approval=on-request',
+        '--profile', 'restricted', '--model=test-model', '--local-provider', 'ollama', '--oss',
+        '--enable', 'example', '--disable=other', '--strict-config', '--search',
+        '--image', 'first-run.png', 'policy-session', 'Original prompt', '--no-daemon'
+      ],
+      policy: [
+        '--config', 'model="test-model"', '--no-daemon', '--config=features.example=true',
+        '--sandbox=read-only', '--ask-for-approval=on-request', '--profile', 'restricted',
+        '--model=test-model', '--local-provider', 'ollama', '--oss', '--enable', 'example',
+        '--disable=other', '--strict-config', '--search'
+      ]
+    },
+    {
+      name: 'attached short values and flags following the explicit session id',
+      args: [
+        '-anever', '-sread-only', '-prestricted', '-mtest-model', '-cfeatures.example=true',
+        'resume', 'policy-session', '--no-daemon', '--add-dir=/tmp', '-C', process.cwd(),
+        '--remote=unix:///tmp/test-codex.sock', '--remote-auth-token-env', 'TEST_REMOTE_TOKEN'
+      ],
+      policy: [
+        '-anever', '-sread-only', '-prestricted', '-mtest-model', '-cfeatures.example=true',
+        '--no-daemon', '--add-dir=/tmp', '-C', process.cwd(),
+        '--remote=unix:///tmp/test-codex.sock', '--remote-auth-token-env', 'TEST_REMOTE_TOKEN'
+      ]
+    },
+    {
+      name: 'short equals options and last selection without replaying the original prompt',
+      args: ['-a=never', '-s=read-only', 'resume', '--last', '--no-daemon', 'Original prompt', '--search'],
+      policy: ['-a=never', '-s=read-only', '--no-daemon']
+    },
+    {
+      name: 'an explicit session id behind an end-of-options delimiter',
+      args: ['--no-daemon', '-a', 'on-request', 'resume', '--', 'policy-session', '--search'],
+      policy: ['--no-daemon', '-a', 'on-request']
+    }
+  ])('preserves launch policy across quota rotation: $name', async ({ args, policy }) => {
+    const appHome = await createTempAppHome();
+    const codexHome = await createTempAppHome('codex-home-');
+    const logPath = path.join(appHome, 'policy-invocations.jsonl');
+    const fixturePath = path.join(appHome, 'policy-codex.mjs');
+    try {
+      await seedCodexHome(codexHome);
+      await seedExistingSession(codexHome, {
+        id: 'policy-session',
+        updatedAt: '2026-04-17T18:00:00.000Z'
+      });
+      await seedState(appHome, {
+        version: 1,
+        accounts: ['a', 'b'],
+        currentIndex: 0,
+        preferredAccountName: 'a',
+        lastSuccessfulAccount: null,
+        // A stale fallback must not override an explicit resume target.
+        lastSessionId: 'unrelated-old-session',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      });
+      await seedAccount(appHome, 'a', { account: 'a', token: 'dummy-a' });
+      await seedAccount(appHome, 'b', { account: 'b', token: 'dummy-b' });
+      // This fixture never creates a session record: recovery must bind the user's
+      // resume target rather than accidentally relying on new-session discovery.
+      await writeFile(fixturePath, `
+import { appendFileSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+const auth = JSON.parse(readFileSync(path.join(process.env.CODEX_HOME, 'auth.json'), 'utf8'));
+appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify({ args: process.argv.slice(2), account: auth.account }) + '\\n');
+if (auth.account === 'a') {
+  console.log("You've hit your usage limit. To get more access now, send a request to your admin.");
+  process.exit(1);
+}
+console.log('available account resumed');
+`, 'utf8');
+
+      const result = await runManagedSession({
+        appHome,
+        codexHome,
+        workspaceDir: process.cwd(),
+        extraArgs: args,
+        codexCommand: `node ${fixturePath}`,
+        env: { ...process.env, FAKE_CODEX_LOG: logPath },
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+        interactive: false
+      });
+
+      expect(result).toMatchObject({ finalAccount: 'b', switchCount: 1, exitCode: 0, exhaustedAll: false });
+      const invocations = (await readFile(logPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+      const firstArgs = args.includes('--no-alt-screen') ? args : [...args, '--no-alt-screen'];
+      const resumePolicy = policy.includes('--no-alt-screen') ? policy : ['--no-alt-screen', ...policy];
+      expect(invocations).toEqual([
+        { account: 'a', args: firstArgs },
+        { account: 'b', args: ['resume', ...resumePolicy, 'policy-session', 'Continue'] }
+      ]);
+      await expect(loadState(appHome)).resolves.toMatchObject({ lastSessionId: 'policy-session' });
+    } finally {
+      await cleanupTempDir(appHome);
+      await cleanupTempDir(codexHome);
+    }
+  });
+
+  test('preserves the reported launch flags when a bare session discovers its id and rotates', async () => {
+    const appHome = await createTempAppHome();
+    const codexHome = await createTempAppHome('codex-home-');
+    const logPath = path.join(appHome, 'bare-policy-invocations.jsonl');
+    const policy = ['--no-daemon', '-a', 'never', '--no-alt-screen', '-s', 'danger-full-access'];
+    try {
+      await seedCodexHome(codexHome);
+      await seedState(appHome, {
+        version: 1,
+        accounts: ['a', 'b'],
+        currentIndex: 0,
+        preferredAccountName: 'a',
+        lastSuccessfulAccount: null,
+        lastSessionId: 'unrelated-old-session',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      });
+      await seedAccount(appHome, 'a', { account: 'a', token: 'dummy-a' });
+      await seedAccount(appHome, 'b', { account: 'b', token: 'dummy-b' });
+
+      const result = await runManagedSession({
+        appHome,
+        codexHome,
+        workspaceDir: process.cwd(),
+        extraArgs: policy,
+        codexCommand: `node ${path.resolve(process.cwd(), 'tests/fixtures/fake-codex.mjs')}`,
+        env: {
+          ...process.env,
+          FAKE_CODEX_LOG: logPath,
+          FAKE_CODEX_SESSION_ID: 'fresh-policy-session'
+        },
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+        interactive: false
+      });
+
+      expect(result).toMatchObject({ finalAccount: 'b', switchCount: 1, exitCode: 0, exhaustedAll: false });
+      const invocations = (await readFile(logPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+      expect(invocations.map(({ args, authText }) => ({ args, account: JSON.parse(authText).account }))).toEqual([
+        { account: 'a', args: policy },
+        { account: 'b', args: ['resume', ...policy, 'fresh-policy-session', 'Continue'] }
+      ]);
+      await expect(loadState(appHome)).resolves.toMatchObject({ lastSessionId: 'fresh-policy-session' });
+    } finally {
+      await cleanupTempDir(appHome);
+      await cleanupTempDir(codexHome);
+    }
+  });
+
   test('switches accounts and resumes with persisted session id after quota failure', async () => {
     const appHome = await createTempAppHome();
     const codexHome = await createTempAppHome('codex-home-');

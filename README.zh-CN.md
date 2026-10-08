@@ -274,6 +274,14 @@ codex-auto add work --auth /path/to/auth.json --config /path/to/config.toml
 codex resume --no-alt-screen <session-id> Continue
 ```
 
+恢复会保留显式指定的守护进程、审批、沙箱、配置、配置档、模型和提供商设置。例如，使用以下命令启动时：
+
+```sh
+codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+额度触发切号后，`--no-daemon` 仍然生效：Codex 不使用共享后台服务器运行。审批和沙箱设置也会保留。原始提示词、图片附件和会话选择器的选择参数不会重放；恢复使用本次运行已绑定的会话 ID。这可以避免切号悄然改变启动策略，但不能据此确认外部 Codex 中所有过期额度或账号状态问题都已解决。
+
 如果新运行已经触发额度处理，但其恢复目标尚未及时出现，`codex-auto` 会给本次运行一个短暂窗口来捕获自己的会话 ID，再报告恢复失败。如果仍无法安全捕获本次运行的会话 ID，或已绑定的 ID 不再可用，则停止自动恢复并报告失败，不会退回 `codex resume --last`。
 
 如果屏幕上已经出现交互式额度提示，此时按 `Ctrl-C`，`codex-auto` 会将其视为用户取消本次运行。它会恢复终端状态并干净退出，不继续自动处理账号耗尽。

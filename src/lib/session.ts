@@ -44,7 +44,7 @@ const nonInteractiveSubcommands = new Set([
 function buildFirstRunArgs(extraArgs: string[]): string[] {
   const args = [...extraArgs];
   if (!args.includes('--no-alt-screen')) {
-    const firstPositional = args.find((a) => !a.startsWith('-'));
+    const firstPositional = args[findFirstPositionalIndex(args)];
     if (!firstPositional || !nonInteractiveSubcommands.has(firstPositional)) {
       args.push('--no-alt-screen');
     }
@@ -180,6 +180,86 @@ const resumeOptionsWithValue = new Set([
   '--add-dir'
 ]);
 
+// Preserve invocation policy, not the original prompt or resume-picker selection.
+const resumePolicyOptionsWithValue = new Set(
+  [...resumeOptionsWithValue].filter((option) => option !== '-i' && option !== '--image')
+);
+const resumePolicyFlags = new Set([
+  '--no-daemon',
+  '--no-alt-screen',
+  '--strict-config',
+  '--oss',
+  '--approve-for-me',
+  '--dangerously-bypass-approvals-and-sandbox',
+  '--dangerously-bypass-hook-trust',
+  '--search'
+]);
+
+function valuedOption(arg: string): { name: string; inline: boolean } | null {
+  const equalsIndex = arg.indexOf('=');
+  const name = equalsIndex === -1 ? arg : arg.slice(0, equalsIndex);
+  if (resumeOptionsWithValue.has(name)) {
+    return { name, inline: equalsIndex !== -1 };
+  }
+
+  // Codex accepts short options with attached values, such as -anever or -mMODEL.
+  const shortName = arg.slice(0, 2);
+  if (!arg.startsWith('--') && arg.length > 2 && resumeOptionsWithValue.has(shortName)) {
+    return { name: shortName, inline: true };
+  }
+  return null;
+}
+
+function findFirstPositionalIndex(args: string[]): number {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    if (arg === '--') return index + 1 < args.length ? index + 1 : -1;
+    const option = valuedOption(arg);
+    if (option) {
+      if (!option.inline) index += 1;
+      continue;
+    }
+    if (!arg.startsWith('-')) return index;
+  }
+  return -1;
+}
+
+function extractResumePolicyArgs(args: string[]): string[] {
+  const result: string[] = [];
+  const commandIndex = findFirstPositionalIndex(args);
+  const isResume = args[commandIndex] === 'resume';
+  const useLast = isResume && extractInitialResumeTarget(args)?.useLast === true;
+  let skippedSessionTarget = false;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    if (arg === '--') break;
+    const option = valuedOption(arg);
+    if (option) {
+      const value = option.inline ? undefined : args[index + 1];
+      if (resumePolicyOptionsWithValue.has(option.name) && (option.inline || value !== undefined)) {
+        result.push(arg);
+        if (!option.inline) result.push(value!);
+      }
+      if (!option.inline) index += 1;
+      continue;
+    }
+    if (resumePolicyFlags.has(arg)) {
+      result.push(arg);
+      continue;
+    }
+    if (arg.startsWith('-')) continue;
+    if (isResume && index === commandIndex) continue;
+    if (isResume && !useLast && !skippedSessionTarget) {
+      skippedSessionTarget = true;
+      continue;
+    }
+    // Everything after the first prompt belongs to that prompt, not launch policy.
+    break;
+  }
+  return result;
+}
+
 type InitialResumeTarget = {
   explicitSessionId: string | null;
   useLast: boolean;
@@ -196,7 +276,7 @@ function parseDateMs(value: unknown): number | null {
 }
 
 function extractInitialResumeTarget(args: string[]): InitialResumeTarget | null {
-  const firstPositionalIndex = args.findIndex((arg) => !arg.startsWith('-'));
+  const firstPositionalIndex = findFirstPositionalIndex(args);
   if (firstPositionalIndex === -1 || args[firstPositionalIndex] !== 'resume') {
     return null;
   }
@@ -226,17 +306,9 @@ function extractInitialResumeTarget(args: string[]): InitialResumeTarget | null 
       break;
     }
 
-    if (arg.startsWith('--')) {
-      const equalsIndex = arg.indexOf('=');
-      const optionName = equalsIndex === -1 ? arg : arg.slice(0, equalsIndex);
-      if (resumeOptionsWithValue.has(optionName)) {
-        if (equalsIndex === -1) {
-          index += 1;
-        }
-        continue;
-      }
-    } else if (resumeOptionsWithValue.has(arg)) {
-      index += 1;
+    const option = valuedOption(arg);
+    if (option) {
+      if (!option.inline) index += 1;
       continue;
     }
 
@@ -567,13 +639,19 @@ async function launchResumeInvocation(options: {
   stdout: OutputLike;
   interactive: boolean;
   sessionId: string;
+  policyArgs: string[];
 }): Promise<InvocationResult> {
   return launchInvocation({
     appHome: options.appHome,
     instanceDir: options.instanceDir,
     workspaceDir: options.workspaceDir,
     codexCommand: options.codexCommand,
-    args: ['resume', '--no-alt-screen', options.sessionId, 'Continue'],
+    args: [
+      'resume',
+      ...(options.policyArgs.includes('--no-alt-screen') ? options.policyArgs : ['--no-alt-screen', ...options.policyArgs]),
+      options.sessionId,
+      'Continue'
+    ],
     env: options.env,
     stdin: options.stdin,
     stdout: options.stdout,
@@ -1023,7 +1101,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
   // session from state so that account switching can resume the correct session without
   // requiring the user to re-select from the picker on the new account.
   if (!lastSessionId) {
-    const firstPositional = (options.extraArgs ?? []).find((a) => !a.startsWith('-'));
+    const firstPositional = (options.extraArgs ?? [])[findFirstPositionalIndex(options.extraArgs ?? [])];
     if (firstPositional === 'resume') {
       lastSessionId = state.lastSessionId ?? null;
     }
@@ -1043,6 +1121,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
   }
 
   try {
+    const resumePolicyArgs = extractResumePolicyArgs(options.extraArgs ?? []);
     while (true) {
       let knownSessionIds = new Set<string>();
       let launchStartedAt = 0;
@@ -1081,7 +1160,8 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
             stdin,
             stdout,
             interactive,
-            sessionId: lastSessionId as string
+            sessionId: lastSessionId as string,
+            policyArgs: resumePolicyArgs
           });
 
       const discoveredSessionId: string | null = firstRun && !lastSessionId

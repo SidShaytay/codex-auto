@@ -161,6 +161,21 @@ Accept when:
 - It does not continue printing `All configured accounts are exhausted` or recovery text such as `and resuming...`.
 - Keyboard-protocol fragments such as `9;5:3u` and `;1:1A` do not appear in the shell.
 
+### 12. Local credentials and daemon policy across rotation
+
+Required whenever account switching, launch arguments, or daemon policy changes. This scenario covers an available account appearing exhausted after switching from a quota-limited account.
+
+1. With two configured accounts, choose an exhausted account first and an available account second. Do not publish credential files or session transcripts.
+2. Run the freshly built `codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access` in a real terminal. These settings allow unrestricted commands without approval, so use a project where you intend that policy.
+3. Trigger quota recovery and confirm the resumed conversation is the same session.
+4. In resumed Codex, check `/usage` and `/status`. Both must report the newly selected account consistently; it must not be marked exhausted solely from the previous account's state.
+5. Repeat with flags before an explicit `resume <session-id>` and with two concurrent terminal sessions. Switching one must not interfere with the other.
+6. Exit normally and verify normal shell input.
+
+Accept when daemon opt-out, approval/sandbox settings, and supported launch overrides remain effective on resume, account status agrees across both views, and no unrelated Codex processes need to be killed. Automated fixture checks verify forwarded flags, not the external Codex daemon's account state.
+
+Current verification: automated results are recorded in `TASKS.md`; real terminal acceptance of this scenario remains pending until performed in a terminal application.
+
 ## Record results
 
 - When a real-terminal regression reveals a new scenario, add it to this checklist before fixing the code.

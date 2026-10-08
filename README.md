@@ -274,6 +274,14 @@ When a rate limit is hit:
 codex resume --no-alt-screen <session-id> Continue
 ```
 
+Recovery preserves explicitly supplied daemon, approval, sandbox, configuration, profile, model, and provider settings. For example, when you start with:
+
+```sh
+codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
+```
+
+`--no-daemon` also applies after a quota switch: Codex runs without its shared background server. The approval and sandbox settings also carry over. Original prompts, image attachments, and session-picker selection flags are not replayed; recovery uses the session ID bound to this run. This prevents a switch from silently changing the launch policy, but does not establish that all stale quota or account-status behavior in external Codex is resolved.
+
 If a fresh run has already triggered quota handling but its recovery target is still catching up, `codex-auto` gives that run a short window to capture its own session ID before surfacing a recovery failure. If the current managed run still has not safely captured its own session ID, or if that bound session ID is no longer available, `codex-auto` stops automatic recovery and surfaces the failure instead of falling back to `codex resume --last`.
 
 If an interactive quota prompt is already on screen and you press `Ctrl-C`, `codex-auto` treats that as a user cancel for the current managed run. It restores the terminal state and exits cleanly instead of continuing into automatic exhausted-account handling.
