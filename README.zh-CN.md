@@ -2,57 +2,26 @@
 
 [English](./README.md) | 中文
 
-`codex-auto` 是一个给 `codex` CLI 用的多账号切换器。
+`codex-auto` 是 `codex` CLI 的多账号切换器。
 
-它把账号认证保存在 `~/.codex-auto/accounts/`，基于你现有的 Codex 使用方式启动受管会话；当前账号命中额度限制时，会自动切到下一个账号并继续恢复会话。
-
-## 适用场景
-
-- 你有多个可用的 Codex 账号
-- 不想手动改 `auth.json`、`config.toml`
-- 希望额度耗尽后自动切号并恢复会话
-- 希望继续复用原始 Codex 的会话历史、插件和 MCP 配置
-
-## 当前能力
-
-- 管理多套账号配置
-- 首次添加账号时直接跑 `codex login`
-- 首次运行时可从现有 Codex 登录态自动引导 `default` 账号
-- 支持导入现成的 `auth.json` 和 `config.toml`
-- 即使源 `CODEX_HOME` 还没初始化，也能启动受管运行
-- 启动受管 `codex` 会话
-- 交互模式保持接近日常终端里的 Codex 使用体验，自动切号或强制结束后也能把 shell 输入状态恢复正常
-- 支持保存长期生效的默认起始账号
-- 支持把账号池里的账号激活给原生 `codex` CLI 使用，且只写入该账号的 `auth.json`
-- 在交互式终端中提示可用的 `codex-auto` 更新，并支持立即更新、跳过或稍后提醒
-- 命中额度限制后自动切到下一个账号
-- 能识别当前 Codex 的额度耗尽提示，包括带升级/购额链接和重试时间的提示
-- 列表中可显示仍在等待恢复额度的账号及其恢复时间
-- 每个活跃受管会话都会绑定自己的恢复目标，支持同项目和跨项目并发运行
-- 切号时只恢复当前受管会话已绑定的 session id，不会改用别的终端里的最新会话
-- 对刚启动并进入恢复流程的新会话，会先给当前运行一个很短的恢复目标确认窗口，再决定是否放弃自动恢复
-- 如果你在交互式额度提示阶段按 `Ctrl-C`，会把这次受管运行按用户取消干净退出，而不是继续走账号耗尽流程
-- 如果无法确认原会话或绑定的 session id 已失效，会停止自动恢复而不是猜测恢复目标
-- 恢复时自动补发 `Continue`
-- 记录运行日志和状态文件
-- 透传所有 `codex` 原始参数和子命令（如 `exec`、`review`、`--model`、`--full-auto`）
+它将账号凭据保存在 `~/.codex-auto/accounts/`，基于现有配置启动受管 Codex 会话，并在当前账号触发额度限制时自动切换到下一个账号。
 
 ## 前置要求
 
-- Node.js 18+
-- 建议在 macOS 或 Linux 终端环境中使用；如果你在 Windows 上，请放到 WSL 里跑，不要直接用原生 `cmd.exe` 或 PowerShell
-- 本机已安装可执行的 `codex` CLI
-- `codex` 可以正常执行 `codex login`、`codex resume`
+- 推荐 Node.js 20+。本包声明支持 Node.js 18+，但其 Commander 14 依赖要求 Node.js 20+。
+- macOS 或 Linux 终端环境；Windows 用户请在 WSL 中运行，而不是原生 `cmd.exe` 或 PowerShell。
+- 已安装可执行的 `codex` CLI。
+- `codex login` 和 `codex resume` 能正常工作。
 
 ## 安装
 
-推荐安装方式：
+通过 npm 全局安装：
 
 ```bash
 npm install -g codex-auto
 ```
 
-安装后验证：
+验证安装：
 
 ```bash
 codex-auto --help
@@ -71,13 +40,7 @@ npm install -g codex-auto@latest
 npm uninstall -g codex-auto
 ```
 
-如果你是本地开发这个仓库，再使用下面这套方式：
-
-```bash
-npm install
-npm run build
-npm link
-```
+要从源码运行你的 fork，请参阅[构建并运行当前检出版本](#构建并运行当前检出版本)。
 
 ## 快速开始
 
@@ -87,9 +50,9 @@ npm link
 codex-auto
 ```
 
-第一次运行时，如果源 `CODEX_HOME` 里已经有可用登录态，`codex-auto` 会自动把它导入为 `default` 账号。
+首次运行时，如果源 `CODEX_HOME` 已有可用登录态，`codex-auto` 会自动将其导入为 `default` 账号。
 
-继续添加更多账号：
+添加更多账号：
 
 ```bash
 codex-auto add a
@@ -102,7 +65,7 @@ codex-auto add b
 codex-auto list
 ```
 
-`codex-auto list` 会用 `*` 标记当前启用的账号。如果某个账号仍在等待额度恢复，列表会把 Codex 给出的恢复时间显示在该账号后面。
+`codex-auto list` 用 `*` 标记当前账号。如果某个账号仍在等待额度恢复，列表会在该账号旁显示 Codex 提供的重试时间。
 
 启动受管会话：
 
@@ -116,21 +79,21 @@ codex-auto
 codex-auto --account b
 ```
 
-设置之后默认优先使用的账号：
+保存后续运行的默认起始账号：
 
 ```bash
 codex-auto use b
 ```
 
-把账号激活给原生 `codex` CLI 使用：
+将账号激活给原生 `codex` CLI 使用：
 
 ```bash
 codex-auto activate b
 ```
 
-`codex-auto activate <name>` 会把该账号的 `auth.json` 写入原始 `CODEX_HOME`，之后直接运行 `codex` 也会使用同一个账号。不带账号名运行 `codex-auto activate` 时，会重新同步列表中 `*` 标记的账号。
+`codex-auto activate <name>` 将该账号的 `auth.json` 写入源 `CODEX_HOME`，之后直接运行 `codex` 也会使用同一账号。不带账号名的 `codex-auto activate` 会重新同步列表中以 `*` 标记的账号。
 
-使用自定义原始 `CODEX_HOME` 启动：
+使用自定义源 `CODEX_HOME` 启动：
 
 ```bash
 codex-auto --codex-home /path/to/.codex
@@ -142,67 +105,106 @@ codex-auto --codex-home /path/to/.codex
 codex-auto remove b
 ```
 
-查看当前安装版本：
+查看已安装版本：
 
 ```bash
 codex-auto --version
 codex-auto version
 ```
 
-在交互式终端中，`codex-auto` 会定期检查 npm 上是否有新版本。发现新版本时会提示你立即更新、跳过该版本或稍后再提醒。设置 `CODEX_AUTO_UPDATE_CHECK=0` 可以关闭检查。
+在交互式终端中，`codex-auto` 会定期检查 npm 上是否有新版本。发现新版本时，会提示立即更新、跳过该版本或稍后提醒。设置 `CODEX_AUTO_UPDATE_CHECK=0` 可关闭检查。
 
-## 透传 codex 参数
+## 适用场景
 
-除了 `codex-auto` 自身的命令（`activate`、`add`、`remove`、`list`、`use`、`version`），其余参数全部原样转发给 `codex`：
+- 你有多个可用的 Codex 账号。
+- 不想手动编辑 `auth.json` 或 `config.toml`。
+- 希望额度耗尽后自动切换账号并恢复会话。
+- 希望保留原有 Codex 会话、插件和 MCP 配置。
+
+## 功能
+
+- 管理多套账号配置。
+- 添加新账号时自动运行 `codex login`。
+- 首次运行时从现有 Codex 配置导入 `default` 账号。
+- 导入已有的 `auth.json` 和 `config.toml` 文件。
+- 即使源 `CODEX_HOME` 尚未初始化，也能启动受管运行。
+- 启动受管 `codex` 会话。
+- 保持日常终端中的交互体验，并在自动切号或强制停止后恢复正常的 shell 输入。
+- 保存后续运行的默认起始账号。
+- 仅写入账号的 `auth.json`，将受管账号激活给原生 `codex` CLI 使用。
+- 在交互式终端中提示更新，并提供立即更新、跳过和稍后提醒选项。
+- 触发额度限制时自动切换到下一个账号。
+- 识别当前 Codex 的额度提示，包括带重试时间的升级或购买提示。
+- 显示仍在等待额度恢复的账号及其重试时间。
+- 在同项目或跨项目并发运行时，为每个活跃受管会话绑定独立恢复目标。
+- 只恢复当前运行已绑定的会话 ID，不根据最新会话猜测目标。
+- 在放弃自动恢复前，给新运行一个短暂窗口来捕获自己的恢复目标。
+- 在交互式额度提示阶段按 `Ctrl-C` 时干净退出，不强行进入账号耗尽处理流程。
+- 无法确认原会话或其会话 ID 已失效时停止自动恢复。
+- 恢复时自动发送 `Continue`。
+- 记录本地会话事件和恢复状态。
+- 透传所有 `codex` 参数和子命令，如 `exec`、`review`、`--model`、`--full-auto`。
+
+## 透传 Codex 参数
+
+除 `codex-auto` 自身命令（`activate`、`add`、`remove`、`list`、`use`、`version`）外，其余参数会直接转发给 `codex`：
 
 ```bash
-# 传入 prompt
-codex-auto "修复登录 bug"
+# 传入提示词
+codex-auto "fix the login bug"
 
 # 指定模型
-codex-auto --model o3 "重构 auth 模块"
+codex-auto --model o3 "refactor the auth module"
 
-# 非交互 exec 模式
-codex-auto exec "添加单元测试"
+# 非交互式 exec 模式
+codex-auto exec "add unit tests"
 
-# 指定账号 + full-auto
-codex-auto --account b --full-auto "迁移到 TypeScript"
+# 指定账号并使用 full-auto
+codex-auto --account b --full-auto "migrate to TypeScript"
 
 # 代码审查
 codex-auto review
 ```
 
-所有透传调用都保留多账号轮转能力：当前账号命中额度限制时，自动切到下一个账号并恢复。
+所有透传调用都保留多账号轮转能力：当前账号触发额度限制时，`codex-auto` 会自动切换到下一个账号并恢复会话。
 
-`--account <name>` 只影响当前这一次运行；`codex-auto use <name>` 会修改后续默认启动时优先使用的账号。
+`--account <name>` 仅覆盖本次运行的选择。`codex-auto use <name>` 会修改后续运行的默认起始账号。
 
 ## 导入已有配置
 
-如果你已经有现成的账号目录，可以直接导入：
+如果已有账号凭据，可以直接导入：
 
 ```bash
 codex-auto add work --auth /path/to/auth.json --config /path/to/config.toml
 ```
 
-规则是：
+规则：
 
-- `--auth` 导入账号凭据
-- `--config` 导入账号配置
-- 如果没有提供 `--auth`，会自动执行一次 `codex login`
-- `config.toml` 会至少保证包含 `cli_auth_credentials_store = "file"`
+- `--auth` 导入账号凭据。
+- `--config` 导入账号配置。
+- 未提供 `--auth` 时，会自动运行 `codex login`。
+- `config.toml` 会确保包含 `cli_auth_credentials_store = "file"`。
 
 ## 工作方式
 
-`codex-auto` 会维护一个自己的目录，默认在：
+`codex-auto` 包装本机已安装的 `codex` CLI。对话、模型请求、工具和向所配置提供商的认证仍由 Codex 处理。包装器管理本地账号凭据，启动并监控 Codex 进程，从终端输出中检测额度错误，并在需要时使用其他账号重新启动同一会话。
+
+### 共享配置，独立凭据
+
+每次受管运行都会在 `~/.codex-auto/instances/<id>/` 下获得一个临时 Codex home。包装器启动 Codex 时将 `CODEX_HOME` 指向该目录，并将所选账号的 `auth.json` 实际副本放入其中。账号导入和切换均为本地文件操作；包装器不会上传凭据。启动后的 Codex 进程使用这些凭据完成正常的提供商认证。
+
+其余配置来自现有 Codex home，通常是 `~/.codex`，也可以是通过 `CODEX_HOME` 指定的源目录。因此切换账号可以复用配置、MCP 设置、插件和已保存的会话，而不必为每个账号单独安装并维护对话历史。
+
+`codex-auto` 维护自己的数据目录，默认位置为：
 
 ```bash
 ~/.codex-auto
 ```
 
-目录结构大致如下：
+目录结构：
 
 ```text
-~/.codex/                  # 你的原始 Codex home，不会被改写
+~/.codex/                  # 源 Codex home；activate 会替换 auth.json
 ├── auth.json
 ├── config.toml
 ├── sessions/
@@ -228,58 +230,66 @@ codex-auto add work --auth /path/to/auth.json --config /path/to/config.toml
 └── state.json
 ```
 
-其中：
+- `accounts/<name>/`：各账号的凭据和配置。
+- `instances/<id>/`：每次运行使用的覆盖目录，作为 `CODEX_HOME`，并在本次运行切换账号时持续复用。
+- `runs/<run-id>.json`：当前受管进程的状态、已绑定会话 ID 和恢复状态。
+- `state.json`：账号顺序、当前索引、默认起始账号、上次成功账号以及最近成功绑定的会话 ID。
+- `logs/`：本地会话事件日志。
 
-- `accounts/<name>/` 保存每个账号自己的认证与配置
-- `instances/<id>/` 是每次运行临时创建并在切号时复用的 overlay `CODEX_HOME`
-- `runs/<run-id>.json` 保存当前受管进程自己的账号、session 绑定和恢复状态
-- `state.json` 保存账号顺序、当前索引、默认起始账号、上次成功账号、最近一次成功绑定的 session id
-- `logs/` 保存会话日志和终端 transcript
+### 为什么使用符号链接？
 
-每次受管运行时，`codex-auto` 都会创建 `~/.codex-auto/instances/<id>/`，把原始 `CODEX_HOME` 中的条目符号链接进去，只把 `auth.json` 替换成当前账号的真实副本，然后在这次受管运行期间持续复用同一个 overlay。命中额度限制后只替换 overlay 里的 `auth.json` 再恢复原会话，进程退出后 overlay 会被清理，因此会话历史、插件、MCP 配置等仍然保留在原始 home 里。
+包装器为源 Codex home 中的**每个已有顶层条目**创建符号链接，但有两个例外：`auth.json` 从所选账号复制，`models_cache.json` 则交给 Codex 为本次运行重新创建。创建链接前，还会确保 `sessions/`、`history.jsonl` 和 `session_index.jsonl` 已存在。
 
-`codex-auto activate <name>` 是显式把账号 `auth.json` 写回原始 `CODEX_HOME` 的命令，用于让原生 `codex` 使用账号池里的账号。它不会复制账号的 `config.toml`。
+它不会遍历每个子目录并逐个创建链接。一个 `sessions -> ~/.codex/sessions` 链接就能访问整个目录树，避免复制可能很大的历史记录，并让受管运行与原生 Codex 使用相同的已保存会话。在源 home 中后来创建的顶层条目不会自动链接到已经运行的实例。
 
-交互式会话会尽量保持你平时使用 Codex 时的终端体验，包括全屏和分屏场景；同时 `codex-auto` 仍然会在后台监控输出并在额度触发时自动切号、恢复会话，并在强制结束或切号后把控制权交还给一个输入状态正常的 shell。
+**这些链接共享的是实时数据，不是备份，也不是沙箱。** 通过链接目录写入会改变原始文件，使用同一源 home 的账号会共享配置和对话历史。如果某个程序通过原子重命名替换链接文件，则可能创建仅属于本次运行的文件；模型缓存因此被排除。受管运行使用源 `config.toml`，而不是保存的各账号配置。如果需要独立的历史或配置，请使用不同的源 home；包装器不强制实施账号隔离。
 
-## 切号与恢复逻辑
+### 账号触发额度限制后会怎样？
 
-当前版本只在检测到真实的额度耗尽提示时触发切号，避免把提醒类文案误判成失败。
+包装器保留同一临时 home，仅替换其中的本地 `auth.json`，并为本次运行绑定的会话启动 `codex resume --no-alt-screen <session-id> Continue`。受管运行结束时会删除临时 home，源 home 中的共享文件则保留。正常受管运行不会替换源 home 的 `auth.json`。
 
-命中额度限制后：
+`codex-auto activate <name>` 是显式将账号的 `auth.json` 写回源 `CODEX_HOME` 的命令，供原生 `codex` 使用。它不会复制账号的 `config.toml`。
 
-1. 标记当前账号已耗尽
-2. 切换到下一个可用账号
-3. 在当前受管进程的 overlay 里替换为下一个账号的 `auth.json`
-4. 只使用当前受管进程已经绑定的 session id 恢复原会话
+交互式会话保持标准 Codex 终端体验，包括全屏和分屏工作流程；同时 `codex-auto` 在后台自动切换账号并恢复会话，在强制停止或额度触发切号后将控制权交还给输入状态正常的 shell。
+
+## 账号切换与会话恢复
+
+当前版本仅在检测到真实额度限制消息时触发切换，避免将警告类输出误判为失败。
+
+触发额度限制后：
+
+1. 将当前账号标记为额度已耗尽。
+2. 切换到下一个可用账号。
+3. 将当前运行覆盖目录中的 `auth.json` 替换为下一账号的凭据。
+4. 仅恢复当前受管运行已经绑定的会话 ID。
 5. 执行：
 
 ```bash
-codex resume <session-id> Continue
+codex resume --no-alt-screen <session-id> Continue
 ```
 
-如果一个刚启动并进入恢复流程的新会话只是恢复目标稍晚才可见，`codex-auto` 会先给这次运行一个很短的确认窗口，再决定是否报恢复失败。如果这次运行最终仍没有安全绑定到自己的 session id，或者该 session id 已失效，`codex-auto` 会停止自动恢复并提示人工处理，而不是回退到 `codex resume --last` 去猜测恢复目标。
+如果新运行已经触发额度处理，但其恢复目标尚未及时出现，`codex-auto` 会给本次运行一个短暂窗口来捕获自己的会话 ID，再报告恢复失败。如果仍无法安全捕获本次运行的会话 ID，或已绑定的 ID 不再可用，则停止自动恢复并报告失败，不会退回 `codex resume --last`。
 
-如果交互式额度提示已经出现，而你主动按 `Ctrl-C` 取消这次运行，`codex-auto` 会把它视为用户中断：优先恢复终端状态并直接退出，不再继续走“所有账号都已耗尽”的自动处理分支。
+如果屏幕上已经出现交互式额度提示，此时按 `Ctrl-C`，`codex-auto` 会将其视为用户取消本次运行。它会恢复终端状态并干净退出，不继续自动处理账号耗尽。
 
-为了避免历史 transcript 干扰，一旦启动或恢复已经进入当前这次运行的最新 prompt，后续额度检测就只看这个 prompt 之后的新输出。
+为避免旧终端记录干扰，启动或恢复到达最新的当前提示符后，额度检测只查看该提示符之后的新输出。
 
-并发运行说明：
+并发运行行为：
 
-- 同一个项目下在多个终端同时运行多个 `codex-auto` 时，每个活跃进程都会维护自己的 session 绑定
-- 不同项目下在多个终端同时运行多个 `codex-auto` 时，也会按各自进程分别恢复
-- 自动切号的恢复目标始终按“当前活跃受管进程”决定，而不是按项目级或全局最新会话决定
+- 同项目下，不同终端中的多个 `codex-auto` 会话各自维护独立恢复绑定。
+- 不同项目下，不同终端中的多个 `codex-auto` 会话也独立恢复。
+- 恢复决策始终针对当前活跃受管进程，而不是项目级或全局的最新会话。
 
 ## 环境变量
 
 - `CODEX_AUTO_HOME`
-  指定 `codex-auto` 的数据目录，默认是 `~/.codex-auto`
+  `codex-auto` 数据目录。默认：`~/.codex-auto`。
 
 - `CODEX_HOME`
-  指定作为 overlay 基底的原始 Codex home，默认是 `~/.codex`
+  作为覆盖目录基底的源 Codex home。默认：`~/.codex`。
 
 - `CODEX_AUTO_CODEX_BIN`
-  指定底层 `codex` 可执行文件路径，默认是 `codex`
+  `codex` 可执行文件路径。默认：`codex`。
 
 - `CODEX_AUTO_UPDATE_CHECK`
   设置为 `0` 可关闭交互式更新提示。
@@ -293,7 +303,7 @@ CODEX_AUTO_CODEX_BIN=/opt/homebrew/bin/codex \
 codex-auto --account a
 ```
 
-## 常用命令
+## 命令参考
 
 ```bash
 # 账号管理（codex-auto 自身命令）
@@ -311,49 +321,96 @@ codex-auto
 codex-auto --account <name>
 codex-auto --codex-home /path/to/.codex
 
-# 透传给 codex（其余所有参数）
-codex-auto [任意 codex 参数...]
-codex-auto --account <name> [任意 codex 参数...]
-codex-auto --codex-home /path/to/.codex [任意 codex 参数...]
+# 透传给 codex（所有其他参数）
+codex-auto [any codex arguments...]
+codex-auto --account <name> [any codex arguments...]
+codex-auto --codex-home /path/to/.codex [any codex arguments...]
 ```
 
 ## 开发
 
-安装依赖：
+### 构建并运行当前检出版本
 
-```bash
-npm install
-```
+使用 Node.js 20+，在你的 fork 目录中运行：
 
-构建：
-
-```bash
+```sh
+npm ci
 npm run build
+env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
 ```
 
-测试：
+`npm ci` 安装 `package-lock.json` 中锁定的依赖，仍会从 npm 下载依赖。通过 `node ./dist/index.js` 运行的 CLI 来自**当前检出版本**，不受全局安装的 `codex-auto` 影响。安装会执行项目的构建钩子和依赖的初始化钩子，包括 `node-pty` 的内置二进制检查或原生编译回退。要在不执行生命周期钩子的情况下安装，可先运行 `npm ci --ignore-scripts`，再显式构建；交互式使用前，原生依赖可能仍需要执行经过审查的初始化步骤。
 
-```bash
+在希望 Codex 操作的项目目录中启动本地构建：
+
+```sh
+cd /path/to/project
+env CODEX_AUTO_UPDATE_CHECK=0 node /path/to/your/fork/dist/index.js
+```
+
+工作目录决定 Codex 打开的项目。这些示例适用于 bash 和 fish。关闭更新检查可避免开发运行提示用上游 npm 发行版替换你的 fork。除非显式覆盖，否则运行仍使用已配置的账号和源 Codex home。
+
+### 提交前测试改动
+
+修改 `src/` 后，重新构建并启动 CLI：
+
+```sh
+npm run build
 npm test
+env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
 ```
 
-本地重新挂载命令：
+调试特定区域时，可以运行针对性测试：
 
-```bash
-npm link
+```sh
+npm test -- tests/session/session.test.ts
 ```
 
-打包检查：
+需要 JavaScript 调试器时，用 `node --inspect-brk ./dist/index.js` 启动构建后的入口，并像上面一样通过 `env CODEX_AUTO_UPDATE_CHECK=0` 关闭更新检查。调试器会在启动前暂停，方便连接支持 Node 的调试器。当前构建不生成源码映射，因此单步调试使用 `dist/` 中的编译文件。
 
-```bash
-npm pack --json
+影响交互行为的改动还必须按[真实终端回归清单](./docs/testing/real-terminal-regression.md)，在真实终端中使用刚构建的入口验证。仅自动化测试无法验证终端行为。暂存提交时，请将问题修复及其针对性测试与无关的工作区改动分开。
+
+### 将本地构建用作命令
+
+可选：在 fork 目录中运行：
+
+```sh
+npm link --ignore-scripts
+command -v codex-auto
+realpath (command -v codex-auto)
 ```
+
+最后一条命令使用 fish 语法；bash 中请用 `realpath "$(command -v codex-auto)"`。解析后的路径应指向当前检出版本的 `dist/index.js`。`npm link` 将全局命令链接到本地检出目录（[npm link 参考](https://docs.npmjs.com/cli/v11/commands/npm-link/)），可能替换该 npm 前缀下的已有命令。修改源码后重新构建即可，链接仍有效。如果 `PATH` 中其他安装的位置更靠前，请使用显式的 `node /path/to/your/fork/dist/index.js` 命令。
+
+### 安装 fork 的固定快照
+
+要安装固定的本地构建，而不是开发链接：
+
+```sh
+npm run build
+npm pack --ignore-scripts
+npm install -g ./codex-auto-0.2.8.tgz --ignore-scripts
+```
+
+包版本变化后，请使用 `npm pack` 打印的文件名。这会安装打包的 fork；之后修改源码需要重新打包和安装。依赖仍从已配置的 npm registry 下载，关闭生命周期脚本后，原生依赖可能需要执行经过审查的初始化步骤。编辑、构建和测试循环建议直接运行当前检出版本。
+
+## 故障排查
+
+- **尚未配置账号：**运行 `codex-auto add <name>` 并完成登录，然后再次启动 `codex-auto`。
+- **找不到 Codex 可执行文件：**确保 `codex` 在 `PATH` 中，或将 `CODEX_AUTO_CODEX_BIN` 设置为其可执行文件路径。
+- **恢复时无法确认会话：**使用 Codex 的会话选择器选择目标会话。无法安全识别会话时，自动恢复会停止。
+- **所有账号额度已耗尽：**查看 `codex-auto list` 中记录的重试时间，并等待额度恢复。
 
 ## 已知限制
 
-- 当前额度检测依赖终端输出中的已知失败提示，不是官方结构化事件
-- 如果底层 `codex` 已经丢失当前活跃会话的 session id，`codex-auto` 会停止自动恢复，不会回退到 `resume --last`
-- 账号切换基于本地状态顺序，不包含权重、优先级和健康检查
+- 额度检测依赖终端输出中已知的失败消息，而不是官方结构化事件。
+- 如果底层 `codex` 会话 ID 丢失，`codex-auto` 会停止自动恢复，不会退回 `resume --last`。
+- 账号轮转基于本地状态顺序，不包含权重、优先级或健康检查。
+
+## 参考
+
+- [真实终端回归清单](./docs/testing/real-terminal-regression.md)
+- [安全审查与凭据流向](./docs/security-review.md)
 
 ## 许可证
 

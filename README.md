@@ -1,45 +1,14 @@
 # codex-auto
 
-English | [中文](./README.zh-CN.md)
+English | [简体中文](./README.zh-CN.md)
 
 A multi-account switcher for the `codex` CLI.
 
 It keeps account auth under `~/.codex-auto/accounts/`, runs managed Codex sessions on top of your existing setup, and automatically rotates to the next account when the current one hits a rate limit.
 
-## Use Cases
-
-- You have multiple Codex accounts available
-- You don't want to manually edit `auth.json` or `config.toml`
-- You want automatic account rotation and session recovery when quota is exhausted
-- You want to keep your original Codex sessions, plugins, and MCP configuration
-
-## Features
-
-- Manage multiple account configurations
-- Run `codex login` automatically when adding a new account
-- Bootstrap a `default` account from your existing Codex setup on first run
-- Import existing `auth.json` and `config.toml` files
-- Start managed runs even when the source `CODEX_HOME` has not been initialized yet
-- Launch managed `codex` sessions
-- Keep interactive Codex sessions usable in normal terminal workflows, including clean shell input after automatic rotation or forced stops
-- Save a default start account for future runs
-- Activate a managed account for the native `codex` CLI by writing only that account's `auth.json`
-- Prompt for available `codex-auto` updates in interactive terminals, with update, skip, or later choices
-- Automatically switch to the next account on rate limit
-- Recognize current Codex quota prompts, including upgrade/purchase messages with retry times
-- Show retry times for accounts that are still waiting for quota to reset
-- Bind each active managed session to its own recovery target across same-project and cross-project concurrent runs
-- Resume only the session ID already bound to the current managed run instead of guessing from the latest session
-- Give a fresh run a brief chance to capture its own recovery target before automatic recovery is abandoned
-- If you cancel an interactive quota prompt with `Ctrl-C`, exit that managed run cleanly instead of forcing an exhausted-accounts flow
-- Stop automatic recovery when the original session cannot be confirmed or its session ID is no longer valid
-- Automatically send `Continue` on resume
-- Log sessions and terminal transcripts
-- Pass through all `codex` arguments and subcommands (e.g. `exec`, `review`, `--model`, `--full-auto`)
-
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+ recommended. The package declares Node.js 18+, but its Commander 14 dependency requires Node.js 20+.
 - macOS or Linux terminal environment; on Windows, run `codex-auto` inside WSL instead of native `cmd.exe` or PowerShell
 - `codex` CLI installed and executable
 - `codex login` and `codex resume` working properly
@@ -71,13 +40,7 @@ Uninstall:
 npm uninstall -g codex-auto
 ```
 
-For local development:
-
-```bash
-npm install
-npm run build
-npm link
-```
+To run your fork from source, see [Build and run this checkout](#build-and-run-this-checkout).
 
 ## Quick Start
 
@@ -151,9 +114,40 @@ codex-auto version
 
 In an interactive terminal, `codex-auto` periodically checks npm for a newer `codex-auto` release. When one is available, it prompts you to update now, skip that version, or postpone the reminder. Set `CODEX_AUTO_UPDATE_CHECK=0` to disable the check.
 
+## Use Cases
+
+- You have multiple Codex accounts available
+- You don't want to manually edit `auth.json` or `config.toml`
+- You want automatic account rotation and session recovery when quota is exhausted
+- You want to keep your original Codex sessions, plugins, and MCP configuration
+
+## Features
+
+- Manage multiple account configurations
+- Run `codex login` automatically when adding a new account
+- Bootstrap a `default` account from your existing Codex setup on first run
+- Import existing `auth.json` and `config.toml` files
+- Start managed runs even when the source `CODEX_HOME` has not been initialized yet
+- Launch managed `codex` sessions
+- Keep interactive Codex sessions usable in normal terminal workflows, including clean shell input after automatic rotation or forced stops
+- Save a default start account for future runs
+- Activate a managed account for the native `codex` CLI by writing only that account's `auth.json`
+- Prompt for available `codex-auto` updates in interactive terminals, with update, skip, or later choices
+- Automatically switch to the next account on rate limit
+- Recognize current Codex quota prompts, including upgrade/purchase messages with retry times
+- Show retry times for accounts that are still waiting for quota to reset
+- Bind each active managed session to its own recovery target across same-project and cross-project concurrent runs
+- Resume only the session ID already bound to the current managed run instead of guessing from the latest session
+- Give a fresh run a brief chance to capture its own recovery target before automatic recovery is abandoned
+- If you cancel an interactive quota prompt with `Ctrl-C`, exit that managed run cleanly instead of forcing an exhausted-accounts flow
+- Stop automatic recovery when the original session cannot be confirmed or its session ID is no longer valid
+- Automatically send `Continue` on resume
+- Record local session events and recovery state
+- Pass through all `codex` arguments and subcommands (e.g. `exec`, `review`, `--model`, `--full-auto`)
+
 ## Passing Through Codex Arguments
 
-Any arguments not recognized as `codex-auto` own commands (`activate`, `add`, `remove`, `list`, `use`, `version`) are forwarded directly to `codex`:
+Any arguments not recognized as `codex-auto` commands (`activate`, `add`, `remove`, `list`, `use`, `version`) are forwarded directly to `codex`:
 
 ```bash
 # Pass a prompt
@@ -193,6 +187,14 @@ Rules:
 
 ## How It Works
 
+`codex-auto` is a wrapper around your installed `codex` CLI. Codex still handles the conversation, model requests, tools, and authentication to its configured provider. The wrapper manages local account credentials, starts and supervises the Codex process, watches terminal output for quota errors, and restarts the same session with another account when needed.
+
+### One shared setup, separate credentials
+
+Each managed run gets a temporary Codex home under `~/.codex-auto/instances/<id>/`. The wrapper launches Codex with `CODEX_HOME` pointing there and puts a real copy of the selected account's `auth.json` in that directory. Account imports and swaps are local file operations; the wrapper does not upload credentials. The launched Codex process uses those credentials for its normal provider authentication.
+
+The rest of the run's setup comes from your existing Codex home, normally `~/.codex`, or the source directory you specify with `CODEX_HOME`. This lets account changes reuse your configuration, MCP settings, plugins, and saved sessions instead of creating a separate installation and conversation history for every account.
+
 `codex-auto` maintains its own data directory, by default at:
 
 ```bash
@@ -202,7 +204,7 @@ Rules:
 Directory structure:
 
 ```text
-~/.codex/                  # your original Codex home, kept intact
+~/.codex/                  # source Codex home; activate replaces auth.json
 ├── auth.json
 ├── config.toml
 ├── sessions/
@@ -232,9 +234,19 @@ Directory structure:
 - `instances/<id>/` — per-run overlay used as `CODEX_HOME` and reused across account switches in that run
 - `runs/<run-id>.json` — current managed process status, bound session ID, and recovery state
 - `state.json` — account order, current index, default start account, last successful account, and the latest successfully bound session ID
-- `logs/` — session logs and terminal transcripts
+- `logs/` — local session event logs
 
-For each managed run, `codex-auto` creates `~/.codex-auto/instances/<id>/`, symlinks entries from the source `CODEX_HOME`, replaces only `auth.json` with a real copy from the selected account, and keeps reusing that overlay for the lifetime of the managed run. On quota switches it swaps only the overlay's `auth.json`, resumes the already bound session, and removes the overlay when the process exits. This keeps session history, plugins, MCP config, and other Codex state in the original home.
+### Why the symlinks?
+
+The wrapper creates a symlink for **each existing top-level entry** in the source Codex home, with two exceptions: `auth.json` is copied from the selected account, and `models_cache.json` is left for Codex to recreate for that run. It also ensures that `sessions/`, `history.jsonl`, and `session_index.jsonl` exist before linking them.
+
+It does not walk every subfolder and create individual links. A single link such as `sessions -> ~/.codex/sessions` makes the whole directory tree accessible. This avoids copying potentially large histories and keeps managed runs and native Codex using the same saved sessions. Entries created later in the source home are not automatically added as new top-level links to an already running instance.
+
+**These links share live data; they are not backups or a sandbox.** Writes through a linked directory can change the original files, and accounts using the same source home share its configuration and conversation history. A program that replaces a linked file with an atomic rename can instead create a run-local file; this is why the model cache is excluded. Managed runs use the source `config.toml`, not the stored per-account configuration. Use separate source homes when you need separate histories or setups; the wrapper does not enforce isolation between accounts.
+
+### What happens when an account hits its limit?
+
+The wrapper keeps the same temporary home, replaces only its local `auth.json`, and launches `codex resume --no-alt-screen <session-id> Continue` for the session bound to that run. It removes the temporary home when the managed run finishes; shared files in the source home remain. Normal managed runs do not replace the source home's `auth.json`.
 
 `codex-auto activate <name>` is the explicit command that writes an account's `auth.json` back to the source `CODEX_HOME` for native `codex` usage. It does not copy account `config.toml`.
 
@@ -253,7 +265,7 @@ When a rate limit is hit:
 5. Run:
 
 ```bash
-codex resume <session-id> Continue
+codex resume --no-alt-screen <session-id> Continue
 ```
 
 If a fresh run has already triggered quota handling but its recovery target is still catching up, `codex-auto` gives that run a short window to capture its own session ID before surfacing a recovery failure. If the current managed run still has not safely captured its own session ID, or if that bound session ID is no longer available, `codex-auto` stops automatic recovery and surfaces the failure instead of falling back to `codex resume --last`.
@@ -317,41 +329,88 @@ codex-auto --codex-home /path/to/.codex [any codex arguments...]
 
 ## Development
 
-Install dependencies:
+### Build and run this checkout
 
-```bash
-npm install
-```
+Use Node.js 20+ and run these commands from your fork's directory:
 
-Build:
-
-```bash
+```sh
+npm ci
 npm run build
+env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
 ```
 
-Test:
+`npm ci` installs the dependencies pinned in `package-lock.json`; it still downloads dependencies from npm. The CLI you run with `node ./dist/index.js` is built from **this checkout**, regardless of any globally installed `codex-auto`. Installation runs the project's build hook and dependency setup hooks, including `node-pty`'s bundled-binary check or native compilation fallback. To install without executing lifecycle hooks, use `npm ci --ignore-scripts`, then build explicitly; native dependencies may need their reviewed setup steps before interactive use.
 
-```bash
+Start the local build from the project you want Codex to work on:
+
+```sh
+cd /path/to/project
+env CODEX_AUTO_UPDATE_CHECK=0 node /path/to/your/fork/dist/index.js
+```
+
+The working directory determines the project Codex opens. These examples work in bash and fish. Disabling update checks keeps development runs from offering to replace your fork with the upstream npm release. Runs still use your configured accounts and source Codex home unless you override them.
+
+### Test changes before committing
+
+After editing `src/`, rebuild and restart the CLI:
+
+```sh
+npm run build
 npm test
+env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
 ```
 
-Link locally:
+Run a focused test when debugging a particular area:
 
-```bash
-npm link
+```sh
+npm test -- tests/session/session.test.ts
 ```
 
-Pack check:
+For a JavaScript debugger, start the built entry point with `node --inspect-brk ./dist/index.js` (and disable update checks with `env CODEX_AUTO_UPDATE_CHECK=0` as above). The debugger pauses before startup so you can attach a Node-compatible debugger. The current build does not emit source maps, so stepping uses compiled files in `dist/`.
 
-```bash
-npm pack --json
+Changes affecting interactive behavior also require the [real terminal regression checklist](./docs/testing/real-terminal-regression.md), using the freshly built entry point in a real terminal. Automated tests alone do not verify terminal behavior. Keep bug fixes and their focused tests separate from unrelated working-tree changes when staging a commit.
+
+### Make the local build available as a command
+
+Optionally, from the fork directory:
+
+```sh
+npm link --ignore-scripts
+command -v codex-auto
+realpath (command -v codex-auto)
 ```
+
+The last command uses fish syntax; in bash, use `realpath "$(command -v codex-auto)"`. The resolved path should end at this checkout's `dist/index.js`. `npm link` makes the global command point to the local checkout ([npm link reference](https://docs.npmjs.com/cli/v11/commands/npm-link/)); it can replace the existing command in that npm prefix. Rebuild after source edits; the link stays valid. If another installation appears earlier on `PATH`, use the explicit `node /path/to/your/fork/dist/index.js` command.
+
+### Install a snapshot of the fork
+
+For a fixed local build rather than a development link:
+
+```sh
+npm run build
+npm pack --ignore-scripts
+npm install -g ./codex-auto-0.2.8.tgz --ignore-scripts
+```
+
+Use the filename printed by `npm pack` if the package version changes. This installs the packed fork; subsequent source edits require a new pack and installation. Dependency downloads still come from the configured npm registry, and native dependencies may need reviewed setup steps when lifecycle scripts are disabled. Prefer the direct checkout command for the edit/build/test cycle.
+
+## Troubleshooting
+
+- **No accounts configured:** run `codex-auto add <name>` and complete the login, then start `codex-auto` again.
+- **Codex executable not found:** ensure `codex` is on `PATH`, or set `CODEX_AUTO_CODEX_BIN` to its executable path.
+- **Recovery cannot confirm a session:** use Codex's session picker to select the intended session. Automatic recovery stops when it cannot safely identify that session.
+- **All accounts exhausted:** check `codex-auto list` for recorded retry times and wait for quota to reset.
 
 ## Known Limitations
 
 - Rate-limit detection relies on known failure messages in terminal output, not official structured events
 - If the underlying `codex` session ID has been lost, `codex-auto` stops automatic recovery instead of falling back to `resume --last`
 - Account rotation is based on local state order, with no weighting, priority, or health checks
+
+## Reference
+
+- [Real-terminal regression checklist](./docs/testing/real-terminal-regression.md)
+- [Security review and credential flow](./docs/security-review.md)
 
 ## License
 

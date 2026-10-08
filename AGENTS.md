@@ -1,38 +1,59 @@
-# 仓库协作规范
+# Repository Collaboration Guidelines
 
-## 基本要求
+## Communication and scope
 
-- 必须用中文回复用户。
-- 任何会影响交互式终端行为的改动，在宣称完成前都必须同时通过自动化测试和真实终端回归。
-- 只要新增、删除或改变了用户可感知的功能、行为、命令行接口、运行要求或使用方式，就必须同步更新 `README.md`；如果仓库维护双语文档，也必须同步更新 `README.zh-CN.md`。
-- `README.md` 是产品介绍和使用说明，不是问题修复记录或开发日志。更新 README 时，应描述用户能获得的能力、行为和使用方式，不应把内容写成“修了什么 bug”的变更说明。
-- README 优先写用户价值、使用场景和产品行为，避免把实现细节（如 PTY、symlink overlay、内部 transport 名称）写进功能卖点；只有在安装、兼容性或参考说明里确实必要时，才引入技术实现细节。
+- Respond in English. Write primary documentation and contributor guidance in English; maintain `README.zh-CN.md` as the Chinese translation.
+- Inspect relevant source, tests, and repository state before editing. Preserve unrelated user changes.
+- Keep changes focused on the requested outcome. Report unresolved issues and verification limits explicitly.
+- Never publish, push, release, or change live account credentials unless the user authorizes that action.
 
-## 真实终端回归
+## User documentation
 
-以下改动都视为“影响交互式终端行为”：
+- Whenever a change adds, removes, or alters user-visible behavior, commands, runtime requirements, or usage, update `README.md` and its maintained Chinese translation `README.zh-CN.md` together.
+- Describe capabilities, behavior, and usage in the README. It is a product guide, not a bug-fix log or development journal.
+- Lead with user value and common tasks. Include implementation details such as PTYs, symlink overlays, or internal transport names only when installation, compatibility, or reference material requires them.
+- Preserve valid paths, copyable commands, and historical facts when translating documents.
 
-- `src/lib/session.ts` 或交互 PTY 托管逻辑
-- `stdin` / `stdout` / `stderr` / raw mode / resize 处理
-- `codex` 启动方式、TTY 包装、终端控制序列处理
-- 交互模式下的额度检测、自动切号、`resume` 恢复
-- 会改变界面重绘、输入回显、提示符、状态行刷新的任何逻辑
+## Security and sensitive data
 
-遇到上述改动时，除了跑自动化测试外，还必须做真实终端回归：
+- Treat account authentication files, tokens, session transcripts, and runtime configuration as sensitive. Never copy their contents into documentation, task records, test fixtures, logs, or review output.
+- Use temporary directories and fake credentials for tests. Do not log in, rotate real accounts, or run live sessions as part of a security scan without authorization.
+- Credential import, activation, and switching must remain local filesystem operations. Do not add credential uploads, telemetry containing secrets, remote credential backups, or unexpected executable downloads. The selected Codex CLI's normal authentication to its configured provider is a separate trust boundary; document changes to that boundary explicitly.
+- Review filesystem path validation, symlink handling, permissions, subprocess arguments, credential persistence, and network destinations when changing those boundaries.
+- Do not execute unreviewed dependency lifecycle scripts. Inspect package scripts and lockfile changes before installation; explain any required native build step.
+- Security findings must include evidence, affected scope, prerequisites, impact, and a practical recommendation. Separate confirmed defects from conditional risks and unverified concerns.
 
-1. 构建并确保测试的是最新二进制，而不是旧的全局安装。
-2. 在真实终端应用里启动 `codex-auto`，不能只靠后台 shell、假流或单元测试判断。
-3. 至少覆盖 `docs/testing/real-terminal-regression.md` 中定义的必测场景。
-4. 只有真实终端回归通过后，才能宣称交互问题已修复。
+## Verification
 
-## 场景清单维护
+- Run checks appropriate to the change. For runtime changes, use `npm run build` and `npm test`, plus focused tests as needed.
+- For documentation-only changes, check technical accuracy, local links, and translation completeness. Do not claim runtime verification unless it actually ran.
+- Any change affecting interactive terminal behavior must pass both automated tests and real terminal regression before it can be declared complete.
 
-- `docs/testing/real-terminal-regression.md` 是交互终端回归的权威清单。
-- 如果发现新的真实场景、终端兼容问题、输入法问题、分屏问题、动态重绘问题，必须把该场景补进这份文档。
-- 如果一次改动影响了清单中的已有场景，也必须同步更新该文档的步骤或验收标准。
+### Changes requiring real terminal regression
 
-## 术语约定
+- Changes to `src/lib/session.ts` or interactive PTY management.
+- Changes to stdin, stdout, stderr, raw mode, or resize handling.
+- Changes to Codex launch behavior, TTY wrappers, or terminal control sequences.
+- Changes to quota detection, automatic account switching, or resume recovery in interactive mode.
+- Any logic that changes redraws, input echo, prompts, or status-line refreshes.
 
-- 这类“真实打开终端来验证交互界面”的检查，不算单元测试。
-- 仓库内统一称为：`真实终端回归`、`交互式端到端回归` 或 `终端验收测试`。
-- 单元测试和集成测试仍然需要保留；真实终端回归是额外必需项，不是替代品。
+### Required procedure
+
+1. Build and verify that the tested binary comes from the latest workspace, rather than an older global installation.
+2. Start `codex-auto` in a real terminal application. Background shells, fake streams, and unit tests alone are insufficient.
+3. Cover at least the required scenarios in `docs/testing/real-terminal-regression.md`.
+4. Declare an interactive issue fixed only after real terminal regression passes. If that check cannot run, record the missing verification explicitly.
+
+## Regression checklist maintenance
+
+- `docs/testing/real-terminal-regression.md` is the authoritative interactive terminal regression checklist.
+- Add newly discovered real-world scenarios involving terminal compatibility, input methods, split panes, or dynamic redraws.
+- Update steps or acceptance criteria whenever a change affects an existing scenario.
+- Use the terms **real terminal regression**, **interactive end-to-end regression**, or **terminal acceptance testing**. These checks are additional to unit and integration tests, not replacements.
+
+## Durable task memory and delegation
+
+- When durable execution memory is requested, use one authoritative task file, normally `TASKS.md`. Resume instructions must be as simple as `See TASKS.md and continue` (substitute the actual task file when different).
+- Record the objective, workspace, constraints, approvals, verified state, and concrete next action. Keep secrets and full command logs out of task records.
+- Give tasks stable IDs and clear owners. Delegate only when requested or required by applicable instructions; assign disjoint edit scopes and a single integration owner.
+- Checkpoint material discoveries and handoffs. Mark work complete only after its required outcome and verification are satisfied; preserve compact history in `TASKS.log`.

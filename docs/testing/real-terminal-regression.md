@@ -1,232 +1,168 @@
-# 真实终端回归清单
+# Real-terminal regression checklist
 
-## 目的
+## Purpose
 
-这份文档记录 `codex-auto` 的交互式终端回归要求。
+This checklist defines the interactive terminal regression requirements for `codex-auto`. These checks are interactive end-to-end regressions, manual acceptance checks, or terminal UI / TTY regressions. They supplement unit tests and non-TTY integration tests.
 
-它不是单元测试，也不是普通的无 TTY 集成测试；行业里更接近：
+Run these checks whenever a change affects terminal display, input, PTY hosting, or interactive account rotation.
 
-- 交互式端到端回归
-- 手工验收回归
-- 终端 UI / TTY 回归测试
+## When checks are required
 
-当代码涉及真实终端显示、输入、PTY 托管、交互切号时，必须执行这里的检查。
+Run real-terminal regressions after any of these changes:
 
-## 何时必须执行
+- Changes to `src/lib/session.ts`.
+- Changes to PTY, TTY, shell startup, raw mode, resizing, or control-sequence handling.
+- Changes to CLI logic that reads input or displays interactive prompts on a real TTY.
+- Changes to interactive quota detection, account rotation, or session recovery.
+- Fixes for split panes, Chinese input, redraw corruption, misplaced prompts, or stale status lines.
 
-出现以下任一情况时，必须做真实终端回归：
+## Prepare the build
 
-- 修改 `src/lib/session.ts`
-- 修改 PTY、TTY、shell 启动、raw mode、resize、控制序列处理
-- 修改真实 TTY 下会读取用户输入或打印交互提示的 CLI 逻辑
-- 修改交互模式下的 quota 检测、自动切号、恢复逻辑
-- 修复分屏、中文输入、重绘错乱、提示符异常、状态行残影等问题
+1. Run the automated tests:
 
-## 执行前准备
+   ```bash
+   npm test
+   ```
 
-1. 先运行自动化测试：
+2. Build the current source:
 
-```bash
-npm test
-```
+   ```bash
+   npm run build
+   ```
 
-2. 构建最新产物：
+3. Ensure the real terminal runs the current build rather than an older global installation. Either install the current checkout:
 
-```bash
-npm run build
-```
+   ```bash
+   npm install -g .
+   ```
 
-3. 确保真实终端里执行的是最新版本，而不是旧全局安装：
+   Or run the built entry point directly from the checkout:
 
-```bash
-npm install -g .
-```
+   ```bash
+   node dist/index.js
+   ```
 
-## 必测场景
+   If using the direct entry point, replace `codex-auto` below with `node /absolute/path/to/checkout/dist/index.js`.
 
-### 1. 启动无控制序列泄漏
+## Required scenarios
 
-步骤：
+### 1. Startup without leaked control sequences
 
-```bash
-codex-auto
-```
+Run `codex-auto` in a real terminal application.
 
-验收：
+Accept when:
 
-- 启动后不应出现字面量 `^[[...`、`^[]...`、`[` 之类控制序列
-- 不应出现终端查询响应被直接打印到屏幕
-- 首屏应正常显示 Codex UI
+- No literal control sequences such as `^[[...`, `^[]...`, or `ESC [` appear.
+- Terminal query responses are not printed as ordinary text.
+- The first Codex screen displays correctly.
 
-### 2. 普通输入回显正常
+### 2. Normal input echo
 
-步骤：
+Enter a short string such as `123` at the prompt, then press Enter.
 
-- 在提示符输入短文本，例如 `123`
-- 回车发送
+Accept when the input appears in the input area without reordered or duplicated characters or partial control sequences.
 
-验收：
+### 3. Chinese input
 
-- 输入内容应正常显示在输入区
-- 不应出现乱序回显、重复回显、半截控制字符
+Enter Chinese text, such as `你好`, then mixed text, such as `你好 hi 123`.
 
-### 3. 中文输入
+Accept when:
 
-步骤：
+- Text alignment is correct, with no stale characters or cursor drift.
+- Wide Chinese characters do not disrupt the layout.
 
-- 输入中文，例如 `你好`
-- 再测试中英文混排，例如 `你好 hi 123`
+### 4. Split panes
 
-验收：
+Split the real terminal or narrow its pane, start `codex-auto` again, and enter short text while watching dynamic updates.
 
-- 不应出现错位、残影、光标漂移
-- 中文宽字符不应把布局撑坏
+Accept when:
 
-### 4. 分屏场景
+- The screen stays clean, with no duplicate drawing or misplaced prompt.
+- Refreshed regions do not retain old content.
 
-步骤：
+### 5. Dynamic status updates
 
-- 在真实终端里分屏或缩小 pane 宽度
-- 再次启动 `codex-auto`
-- 输入短文本并观察动态界面刷新
+Watch startup, MCP startup, and dynamic states such as `Working...`.
 
-验收：
+Accept when status updates are smooth, old frames disappear, and redraw control sequences do not appear as literal text.
 
-- 不应出现脏屏、重复绘制、提示符错位
-- 动态刷新区域不应把旧内容残留在屏幕上
+### 6. Interactive account rotation and recovery
 
-### 5. 动态状态行刷新
+Required whenever a change affects interactive quota detection, rotation, or recovery.
 
-步骤：
+Use a controllable repository fixture or reproducible account setup to trigger quota exhaustion on the first account. Also test startup or recovery that replays old quota text before reaching the current prompt. Observe rotation and recovery.
 
-- 观察启动阶段、MCP 启动阶段、`Working...` 一类动态状态变化
+Accept when:
 
-验收：
+- A clear quota message triggers detection and rotation to the next account.
+- Recovery resumes the same session.
+- Replayed quota text from an old transcript does not incorrectly mark the current account as newly exhausted.
+- A newly interactive session whose recovery target becomes visible shortly afterward is given time to bind before recovery is abandoned.
+- The terminal display remains correct after rotation.
 
-- 状态行更新应平滑
-- 不应残留旧帧内容
-- 不应把刷新控制逻辑泄漏成字面量文本
+### 7. Interactive update prompt
 
-### 6. 交互式自动切号与恢复
+Required whenever a change affects update prompts, confirmation input, or skipping updates on a real TTY.
 
-适用条件：
+Trigger a controlled new-version prompt in a real terminal. Test postponement or an empty Enter response, skipping the version, and updating now when feasible. Enter short text after returning to the shell.
 
-- 只要本次改动触及交互模式下的额度检测、切号、恢复，就必须测
+Accept when:
 
-建议方式：
+- Update prompts appear only in interactive terminals and do not contaminate exact output such as `--version`.
+- `s` or `skip` records the skipped version and prevents repeated prompts for it.
+- An empty Enter response dismisses the prompt without blocking the command.
+- Shell input, Enter, and Backspace work normally afterward.
 
-- 使用仓库现有可控 fixture 或可复现账号环境，让第一账号触发 quota
-- 补测一次“先重放旧 quota 文本，再进入当前 prompt”的启动或恢复场景
-- 观察是否自动切到下一个账号并恢复会话
+### 8. Concurrent terminals in the same project
 
-验收：
+Required whenever a change affects interactive session binding, rotation, or recovery.
 
-- 能检测到明确 quota 输出
-- 能自动切到下一个账号
-- 能继续 `resume` 到同一会话
-- 如果启动或恢复前先出现了旧 transcript 里的 quota 文本，不应把当前账号误判成新一轮 exhausted
-- 对刚进入交互态、恢复目标稍后才可见的会话，不应过早放弃自动恢复
-- 切号后终端界面仍然不乱
+Open two real terminals in the same project. Start an independent `codex-auto` session in each and give them distinguishable context. Trigger quota exhaustion in only one session and observe recovery.
 
-### 7. 交互式更新提示
+Accept when:
 
-适用条件：
+- The exhausted terminal resumes only its own original session.
+- It does not take over or attach to the other terminal's session.
+- Display and input remain correct after rotation.
 
-- 只要本次改动触及真实 TTY 下的更新提示、确认输入、跳过更新等交互逻辑，就必须测
+### 9. Concurrent terminals in different projects
 
-步骤：
+Required whenever a change affects interactive session binding, rotation, or recovery.
 
-- 在真实终端里触发一次可控的新版本提示
-- 分别验证“稍后提醒”或直接回车、“跳过该版本”、以及可行时的“立即更新”路径
-- 返回 shell 后输入短文本
+Open real terminals in two different projects and start independent `codex-auto` sessions. Trigger quota exhaustion in one session and observe recovery.
 
-验收：
+Accept when:
 
-- 更新提示应只出现在真实交互式终端里，不应污染 `--version` 等精确输出
-- 输入 `s` 或 `skip` 后应记录跳过版本，后续不应继续反复提示同一版本
-- 直接回车应跳过本次提示，不应阻塞后续命令
-- 返回 shell 后普通输入、回车、退格应正常
+- The exhausted terminal resumes only its own original session.
+- The other project's session is neither resumed by mistake nor otherwise affected.
+- Display and input remain correct after rotation.
 
-### 8. 同项目双终端并发切号不串会话
+### 10. Normal shell input after exit
 
-适用条件：
+Required whenever a change affects interactive PTY exit, forced stops, control-sequence handling, or cleanup after rotation.
 
-- 只要本次改动触及交互模式下的会话绑定、切号、恢复，就必须测
+Start `codex-auto` in a real terminal. Exit normally, or trigger a quota-driven rotation or stop. Back in the shell, enter short text such as `code 123`, then Chinese or mixed text such as `你好 hi`.
 
-步骤：
+Accept when:
 
-- 在同一个项目目录里打开两个真实终端
-- 分别启动两个独立的 `codex-auto` 交互会话
-- 让两个会话都各自产生可区分的上下文
-- 只让其中一个会话触发 quota 并观察自动切号恢复
+- Control sequences such as `c9;1:...u`, `^[[...`, and `^[>...m` do not appear as ordinary input.
+- Shell input, Enter, and Backspace work normally.
+- Bracketed paste, extended keyboard protocols, and application cursor mode do not leave abnormal echo behavior behind.
 
-验收：
+### 11. Ctrl-C during a quota prompt
 
-- 触发 quota 的那个终端只能恢复到它自己原来的会话
-- 另一个终端的会话不能被抢占或串接
-- 切号恢复后界面不乱、输入正常
+Required whenever a change affects interactive quota detection, rotation cleanup, or `Ctrl-C` / SIGINT handling.
 
-### 9. 跨项目双终端并发切号不串会话
+Start `codex-auto` in a real terminal and trigger a clear quota prompt. Press `Ctrl-C` once before rotation or exhausted-account handling finishes. Back in the shell, enter short text and test an arrow key or Delete key.
 
-适用条件：
+Accept when:
 
-- 只要本次改动触及交互模式下的会话绑定、切号、恢复，就必须测
+- The managed run exits as a user cancellation.
+- It does not continue printing `All configured accounts are exhausted` or recovery text such as `and resuming...`.
+- Keyboard-protocol fragments such as `9;5:3u` and `;1:1A` do not appear in the shell.
 
-步骤：
+## Record results
 
-- 在两个不同项目目录里分别打开真实终端
-- 各自启动独立的 `codex-auto` 交互会话
-- 让其中一个会话触发 quota 并观察自动切号恢复
-
-验收：
-
-- 触发 quota 的终端只能恢复到它自己的原会话
-- 另一个项目中的会话不能被误恢复或误影响
-- 切号恢复后界面不乱、输入正常
-
-### 10. 退出后 shell 输入状态正常
-
-适用条件：
-
-- 只要本次改动触及交互 PTY 退出、强制结束、控制序列处理、自动切号收尾，就必须测
-
-步骤：
-
-- 在真实终端里启动 `codex-auto`
-- 让会话正常退出，或触发一次 quota 自动切号/停止
-- 返回 shell 后输入短文本，例如 `code 123`
-- 再输入一段中文或中英混排，例如 `你好 hi`
-
-验收：
-
-- 不应出现 `c9;1:...u`、`^[[...`、`^[>...m` 之类控制字符被当成普通输入
-- shell 中的普通输入、回车、退格应恢复正常
-- 不应残留 bracketed paste、扩展键盘协议、应用光标模式导致的异常回显
-
-### 11. 额度提示阶段的 `Ctrl-C` 退出
-
-适用条件：
-
-- 只要本次改动触及交互额度检测、自动切号收尾、`Ctrl-C`/SIGINT 处理，就必须测
-
-步骤：
-
-- 在真实终端里启动 `codex-auto`
-- 让当前账号进入明确的额度提示阶段
-- 在自动切号或账号耗尽处理尚未完成前按一次 `Ctrl-C`
-- 返回 shell 后输入短文本和一个方向键/删除键等常见按键
-
-验收：
-
-- 应按“用户主动取消”退出当前受管运行
-- 不应继续打印 `All configured accounts are exhausted` 或残留 `and resuming...` 一类自动恢复文案
-- 返回 shell 后不应出现 `9;5:3u`、`;1:1A` 等终端键盘协议残留
-
-## 记录要求
-
-- 如果真实终端回归发现了新的问题场景，必须先把该场景补进本文档，再修复代码。
-- 如果某次修复新增了新的验收方式或新的高风险场景，也必须更新本文档。
-- 在汇报完成时，应明确说明：
-  - 跑了哪些自动化测试
-  - 做了哪些真实终端回归
-  - 真实终端回归使用了什么终端环境（例如 Terminal.app、iTerm2、分屏）
+- When a real-terminal regression reveals a new scenario, add it to this checklist before fixing the code.
+- Add any new acceptance method or high-risk scenario introduced by a fix.
+- A completion report must state which automated tests ran, which real-terminal scenarios ran, and the terminal environment used, such as Terminal.app, iTerm2, or split panes.

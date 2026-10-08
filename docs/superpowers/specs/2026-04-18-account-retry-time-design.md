@@ -1,89 +1,81 @@
-# codex-auto 账号恢复时间展示设计
+# codex-auto Account Retry Time Display Design
 
-日期：2026-04-18
-状态：draft
+Date: 2026-04-18
+Status: draft
 
-## 1. 概述
+## 1. Overview
 
-当前 `codex-auto` 在账号命中额度限制时会自动切换到下一个账号，但用户无法从 `codex-auto list` 中直接看到某个账号预计何时恢复可用。Codex 在额度提示中已经给出了类似 `or try again at 11:10 PM.` 的信息，这些信息应被 `codex-auto` 捕获并转化为用户可见状态。
+`codex-auto` currently switches to the next account when quota is exhausted, but `codex-auto list` does not show when an account is expected to become available again. Codex already includes messages such as `or try again at 11:10 PM.`; `codex-auto` should capture this information and show it to users.
 
-本次设计引入一项产品能力：
+This design introduces one capability:
 
-- 当账号命中额度限制且 Codex 输出了恢复时间时，`codex-auto list` 在该账号后面展示原始时间字符串
+- When an account hits a quota limit and Codex reports a retry time, show the original time string after that account in `codex-auto list`.
 
-同时满足两个约束：
+Two constraints apply:
 
-- 展示应保留 Codex 原始文案中的时间字符串，例如 `11:10 PM`
-- 该状态不是永久标签；一旦时间到达或该账号后续成功运行，状态必须自动消失
+- Preserve the time string from Codex's message, such as `11:10 PM`.
+- This is temporary status: remove it when the time arrives or the account subsequently runs successfully.
 
-## 2. 目标与非目标
+## 2. Goals and Non-goals
 
-### 2.1 目标
+### 2.1 Goals
 
-- 从额度耗尽文案中提取“下次可重试时间”
-- 将原始显示字符串持久保存到 `state.json`
-- 同时保存一个内部可比较的过期时间，用于自动清理
-- 在 `codex-auto list` 中展示账号恢复时间
-- 到点后自动去掉该状态，无需用户手动清理
-- 该账号后续一旦成功运行，立即清掉恢复时间状态
+- Extract the next retry time from quota exhaustion messages
+- Persist the original display string in `state.json`
+- Also store a comparable internal expiration time for automatic cleanup
+- Show account retry times in `codex-auto list`
+- Remove the status when it expires without manual cleanup
+- Clear the status immediately after the account next runs successfully
 
-### 2.2 非目标
+### 2.2 Non-goals
 
-- 不做更复杂的自然语言时间解析，当前只支持已观察到的 `or try again at <time>.` 形式
-- 不把显示时间转换成相对时间或其他格式
-- 不阻止用户手动启动“仍在等待恢复”的账号；这一轮只做可见性，不做硬性调度约束
-- 不做跨时区推断或服务器时间校准
+- Complex natural-language time parsing; support only the observed `or try again at <time>.` format for now
+- Converting display times to relative time or another format
+- Blocking manual starts of accounts still waiting for availability; this iteration adds visibility without hard scheduling restrictions
+- Inferring time zones or calibrating against server time
 
-## 3. 方案比较
+## 3. Options
 
-### 方案 A：把恢复时间状态保存在 `state.json`
+### Option A: Store Retry Status in `state.json`
 
-内容：
+- Key retry information by account name.
+- Each record includes:
+  - `displayText`: the original time string shown to users, such as `11:10 PM`
+  - `availableAt`: an internal ISO timestamp
 
-- 以账号名为 key 保存恢复时间信息
-- 每条记录包含：
-  - `displayText`：直接展示给用户的原始时间字符串，例如 `11:10 PM`
-  - `availableAt`：内部使用的 ISO 时间戳
+Advantages:
 
-优点：
+- Rendering `list` requires only one state read.
+- Quota updates, successful-run cleanup, and expiration cleanup share one state store.
+- Testing and normalization remain centralized.
 
-- `list` 渲染时只需一次读状态
-- 命中额度、成功清理、到期清理都能走同一份状态
-- 测试和归一化逻辑集中
+Disadvantage: more complex `state.json` structure.
 
-缺点：
+### Option B: Store Retry Status in `accounts/<name>/meta.json`
 
-- `state.json` 结构更复杂
+Advantage: account-private metadata remains together.
 
-### 方案 B：把恢复时间状态保存在 `accounts/<name>/meta.json`
+Disadvantages:
 
-优点：
+- `list` must read each account's extra file.
+- Expiration cleanup and runtime updates spread across multiple files.
+- This differs from the existing account list logic driven by `state.json`.
 
-- 账号私有元信息更集中
+### Option C: Derive Retry Status from Logs on Every `list`
 
-缺点：
+Advantage: no new state fields.
 
-- `list` 需要额外读每个账号文件
-- 过期清理和运行态更新会分散到多个文件
-- 与现有 `state.json` 驱动的账号列表逻辑不一致
+Disadvantages:
 
-### 方案 C：每次 `list` 现算日志
+- Fragile dependency on log format
+- Difficult to clear status accurately after successful recovery
+- Unsuitable as a product capability
 
-优点：
+Recommendation: Option A.
 
-- 无需新增状态字段
+## 4. State
 
-缺点：
-
-- 依赖日志格式，脆弱
-- 很难准确处理“已成功恢复后应移除”的语义
-- 不适合作为产品能力
-
-推荐：方案 A。
-
-## 4. 状态设计
-
-`state.json` 新增字段：
+Add a field to `state.json`:
 
 ```json
 {
@@ -103,114 +95,94 @@
 }
 ```
 
-语义：
+- `displayText` goes directly into `list`, preserving the original Codex time string.
+- `availableAt` allows comparison with the current time to determine whether the retry point has passed.
 
-- `displayText`
-  直接用于 `list` 展示，保持 Codex 原始时间字符串
-- `availableAt`
-  内部用于比较当前时间是否已经超过恢复点
+Normalization:
 
-归一化规则：
+- Remove the corresponding record when an account is deleted.
+- Remove expired retry records when loading state.
+- Treat a missing field in legacy files as an empty object.
 
-- 账号被删除时，对应记录一并删除
-- 加载状态时，如果某条恢复时间已经过期，则自动从状态中移除
-- 旧状态文件没有该字段时，按空对象兼容
+## 5. Parsing
 
-## 5. 解析设计
+### 5.1 Text Source
 
-### 5.1 文本来源
+Extract retry times only from output already recognized as quota exhaustion.
 
-恢复时间只从已经被识别为额度耗尽的输出片段中提取。
-
-已观察到的格式：
+Observed format:
 
 ```text
 You've hit your usage limit.
 or try again at 11:10 PM.
 ```
 
-### 5.2 提取规则
+### 5.2 Extraction
 
-- 从 sanitize 后的输出中匹配 `or try again at <time>` 结构
-- `<time>` 原样保存到 `displayText`
-- 再尝试把 `<time>` 解析成本地时间
+- Match `or try again at <time>` in sanitized output.
+- Save `<time>` unchanged as `displayText`.
+- Then attempt to parse `<time>` as local time.
 
-### 5.3 解析为内部时间戳
+### 5.3 Internal Timestamp
 
-为了支持自动过期清理，需要把 `11:10 PM` 之类的字符串转成内部时间点。
+Convert strings such as `11:10 PM` into an internal time point for expiration cleanup.
 
-规则：
+- Use the current local date as the reference.
+- If the parsed time today is later than now, use today.
+- If the parsed time today is earlier than now, use tomorrow.
 
-- 使用当前本机本地日期作为基准
-- 如果解析出来的当天时间晚于当前时刻，则使用当天
-- 如果解析出来的当天时间早于当前时刻，则视为次日
+This covers the common case of receiving a retry-time message near midnight.
 
-这样可以覆盖 CLI 在接近午夜时收到恢复时间提示的常见场景。
+## 6. Behavior
 
-## 6. 行为设计
+### 6.1 Quota Exhaustion
 
-### 6.1 命中额度时
+- If a retry time is extracted, update `retryAvailabilityByAccount[currentAccount]`.
+- Otherwise, keep existing account switching behavior without adding a retry-time label.
 
-当当前账号命中额度限制：
+### 6.2 Successful Run
 
-- 若提取到了恢复时间，则更新 `retryAvailabilityByAccount[currentAccount]`
-- 若未提取到恢复时间，仍保留现有切号行为，但不新增恢复时间展示
+Clear the account's record from `retryAvailabilityByAccount` after a successful run. A successful run means the account is no longer waiting to become available.
 
-### 6.2 成功运行时
+### 6.3 Expiration Cleanup
 
-当某个账号成功完成一次运行：
+When `list` or a new managed run calls `loadState()`, remove records whose `availableAt <= now`.
 
-- 清除该账号在 `retryAvailabilityByAccount` 中的记录
+The status therefore expires even if the user has not successfully used that account again.
 
-原因：
+## 7. Account List
 
-- 既然它已经成功跑通，这个“等待恢复”状态已经不成立
+Append retry information after the account name in `codex-auto list`.
 
-### 6.3 到期清理
-
-当用户执行 `list` 或新的受管运行触发 `loadState()` 时：
-
-- 若某账号的 `availableAt <= now`
-- 自动把它从 `retryAvailabilityByAccount` 中移除
-
-这样即使用户没有再次成功使用该账号，到期后状态也会自然消失。
-
-## 7. 列表展示
-
-`codex-auto list` 在账号名称后追加恢复时间说明。
-
-建议格式：
+Suggested output:
 
 ```text
 * default (default, retry at 11:10 PM)
   work
 ```
 
-规则：
+Rules:
 
-- 如果账号既是默认起始账号又有恢复时间，把两个标签合并到同一对括号内
-- 如果只有恢复时间，则显示 `(retry at 11:10 PM)`
-- 不显示内部 ISO 时间戳
+- Combine default and retry labels in one set of parentheses when both apply.
+- Show `(retry at 11:10 PM)` when only retry information applies.
+- Do not display the internal ISO timestamp.
 
-## 8. 测试策略
+## 8. Testing
 
-自动化测试至少覆盖：
+Automated tests must cover at least:
 
-- 能从额度耗尽文案中提取恢复时间字符串
-- 能将时间字符串解析为内部时间点
-- 命中额度后会把恢复时间写入状态
-- 成功运行后会清掉该账号的恢复时间
-- 加载状态时会自动清掉已经过期的恢复时间
-- `list` 会展示恢复时间标签，并与 `(default)` 共存
-- 删除账号时会移除该账号的恢复时间记录
+- Extracting a retry-time string from quota exhaustion output
+- Parsing the string into an internal time point
+- Saving retry information after quota exhaustion
+- Clearing the account's retry information after success
+- Clearing expired retry information when loading state
+- Showing retry labels alongside `(default)` in `list`
+- Removing retry records when deleting accounts
 
-README 更新至少覆盖：
+README updates must explain that `list` shows accounts waiting for availability and their retry time, using product-focused language.
 
-- `list` 现在会展示仍在等待恢复的账号及其恢复时间
-- 文案保持产品介绍口径
+## 9. Risks and Trade-offs
 
-## 9. 风险与权衡
-
-- 该功能依赖 Codex 当前输出格式；若上游文案改变，恢复时间提取可能失败，但不应影响原有自动切号主流程
-- 把 `displayText` 与 `availableAt` 同时保存会稍增状态复杂度，但可以同时满足“原样展示”和“自动过期”
-- 本轮不阻止用户手动尝试尚未恢复的账号，保持行为保守，先解决可见性问题
+- Extraction depends on Codex's current output format. Upstream wording changes may prevent extraction, but must not affect the existing automatic account switching flow.
+- Storing both `displayText` and `availableAt` adds some state complexity but supports both unchanged display and automatic expiration.
+- Users may still manually try accounts that have not yet become available. This conservative iteration addresses visibility first.

@@ -1,16 +1,16 @@
 # tests/test_switch.py
 """
-端到端账号切换测试。
+End-to-end account switching test.
 
-通过伪造 codex 二进制（python3 脚本），模拟：
-  第一次调用 → 输出额度耗尽消息，触发切换
-  第二次调用（resume --last）→ 正常退出
+A fake Codex executable (a Python script) simulates:
+  First invocation: prints a quota-exhausted message, triggering a switch.
+  Second invocation (resume --last): exits normally.
 
-验证切换后：
-  1. auth.json 已更新为 B 账号的配置
-  2. DB is_current 已更新为 B
-  3. settings.json currentProviderCodex 已更新为 B
-  4. A、B 在 DB 中的 settings_config 互不污染（仍然不同）
+After switching, verify that:
+  1. auth.json contains account B's configuration.
+  2. The database marks B as is_current.
+  3. settings.json selects B as currentProviderCodex.
+  4. Accounts A and B retain distinct settings_config values in the database.
 """
 
 import json

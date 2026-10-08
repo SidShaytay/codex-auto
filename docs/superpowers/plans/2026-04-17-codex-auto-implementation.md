@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. It will decide whether each batch should run in parallel or serial subagent mode and will pass only task-local context to each subagent. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a macOS-only CLI that manages multiple Codex accounts, starts a managed Codex session, rotates to the next account on explicit quota/rate-limit failures, resumes the same session, and automatically sends `继续`.
+**Goal:** Build a macOS-only CLI that manages multiple Codex accounts, starts a managed Codex session, rotates to the next account on explicit quota/rate-limit failures, resumes the same session, and automatically sends `继续` (Chinese for “continue”; the historical literal prompt).
 
 **Architecture:** The CLI keeps one shared runtime `CODEX_HOME` under `~/.codex-auto/runtime` for session continuity and one private directory per account under `~/.codex-auto/accounts/<name>` for auth/config isolation. A PTY runner starts the real `codex`, watches sanitized terminal output for explicit limit errors, swaps runtime auth/config to the next account, and relaunches with `codex resume --last "继续"`.
 
@@ -259,7 +259,7 @@ Expected: PASS
 - [ ] **Step 1: Write the failing session tests**
 
 ```ts
-test('switches accounts and resumes with 继续 after quota failure', async () => {
+test('switches accounts and resumes with the continue prompt after quota failure', async () => {
   const result = await runManagedSession({
     appHome,
     workspaceDir,

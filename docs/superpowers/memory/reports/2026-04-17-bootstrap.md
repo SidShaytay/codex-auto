@@ -16,7 +16,7 @@
 ## Uncertain or missing areas
 - Gap: No implementation exists yet, so runtime storage and process-management behavior are still design-stage only
 - Gap: No finalized UX for `add` account onboarding yet
-- Gap: No finalized command contract for automatic resume and `继续` injection yet
+- Gap: No finalized command contract for automatic resume and `继续` (Chinese for “continue”) injection yet
 
 ## Recommended next scope
 - Finish brainstorming for account onboarding and runtime process model, then write the design spec before implementation

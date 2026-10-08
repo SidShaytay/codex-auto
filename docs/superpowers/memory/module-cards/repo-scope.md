@@ -19,7 +19,7 @@ status: active
 - Host a macOS-only CLI that manages multiple Codex account configurations
 - Support `list`, `add`, `remove`, bare `codex-auto` interactive chat entry, and `codex-auto --account <name>` override startup
 - Detect explicit quota or rate-limit failures and rotate to the next configured account
-- Reconnect to the same Codex session and send `继续` after switching accounts
+- Reconnect to the same Codex session and send `继续` (Chinese for “continue”; the historical literal prompt) after switching accounts
 
 ## Entry points
 
