@@ -30,3 +30,7 @@ Added mirrored README instructions for locked dependency installation, direct lo
 ## 2026-10-08 — S12: Build revision provenance
 
 Added build-time Git metadata to both version commands and diagnostic reports in cc00a14. No runtime Git dependency; archives gracefully retain base version. Tracked changes append .dirty; temporary untracked ISSUE.report.md is excluded. Build and focused CLI/diagnostics/package checks passed (44 initial checks plus four final package tests). Installed clean snapshot verified both version commands outside the checkout. README mirrors updated. Existing terminal acceptance requirements and known unrelated suite failure remain unchanged.
+
+## 2026-10-08 — S13: Mandatory task tracking
+
+AGENTS.md requires every code change, bug fix, and feature addition to enter TASKS.md before code edits, including small changes. Scope, findings, verification, commit and handoff checkpoints must stay current. Required instruction language checked. S12 was recorded before its implementation; this makes that workflow unconditional for future code work.

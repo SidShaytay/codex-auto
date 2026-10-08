@@ -53,7 +53,9 @@
 
 ## Durable task memory and delegation
 
-- When durable execution memory is requested, use one authoritative task file, normally `TASKS.md`. Resume instructions must be as simple as `See TASKS.md and continue` (substitute the actual task file when different).
+- Every code change, bug fix, and feature addition must be tracked through `TASKS.md`, including small or single-session changes. Before editing code, read `TASKS.md` and create or update a task with a stable ID, owner, intended outcome, scope, required verification, and concrete next action.
+- Keep `TASKS.md` as the authoritative execution record. Update it when scope changes, after material findings and verification, and before committing or handing off. Record remaining checks explicitly; mark a task complete only after its required outcome and verification are satisfied.
+- Resume instructions must be exactly as simple as `See TASKS.md and continue`.
 - Record the objective, workspace, constraints, approvals, verified state, and concrete next action. Keep secrets and full command logs out of task records.
 - Give tasks stable IDs and clear owners. Delegate only when requested or required by applicable instructions; assign disjoint edit scopes and a single integration owner.
 - Checkpoint material discoveries and handoffs. Mark work complete only after its required outcome and verification are satisfied; preserve compact history in `TASKS.log`.
