@@ -252,6 +252,12 @@ The wrapper keeps the same temporary home, replaces only its local `auth.json`, 
 
 Interactive sessions keep the standard Codex terminal experience, including full-screen and split-pane workflows, while `codex-auto` continues automatic account rotation and session recovery in the background and returns control to your shell in a normal input state after a forced stop or quota-driven switch.
 
+### Inline terminal display
+
+`--no-alt-screen` tells Codex to draw its interface in the normal terminal buffer instead of a separate full-screen buffer. This preserves scrollback, so you can scroll back through output after exiting. It changes display behavior, not credentials, daemon use, approvals, or sandbox policy. See the [Codex CLI reference](https://developers.openai.com/codex/cli/reference).
+
+This wrapper adds the flag by default for interactive launches and automatic recovery. Inline display keeps output in scrollback when Codex exits and restarts during recovery. The repository also records terminal redraw and split-pane compatibility concerns, though it does not establish the original author's exact reason for choosing this flag. It is not required for credential switching.
+
 ## Account Switching & Session Recovery
 
 The current version only triggers a switch when a genuine rate-limit message is detected, avoiding false positives from warning-like output.
