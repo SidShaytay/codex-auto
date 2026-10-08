@@ -1,0 +1,28 @@
+# Completed task history
+
+## 2026-10-08 — Security assessment and English documentation
+
+- S01 complete: `docs/security-review.md` maps credential flow, network/execution boundaries, and malware indicators. No first-party credential upload or persistence evidence observed. Five source risks recorded: unsafe account names, shell command interpretation, permissive credential copies, fork updater identity, conditional resume policy omission. npm audit: eight affected development package nodes; production audit zero. Dependencies/native binaries/external Codex remain review limits. No remediation applied.
+- D01 complete: all 16 `docs/superpowers/**` Markdown files reviewed; Chinese prose translated. Historical literal continuation prompts retained with English explanation to preserve recorded command semantics.
+- D02 complete: both READMEs and all 11 real terminal regression scenarios in English. Legacy `README.zh-CN.md` is an English mirror; Chinese IME sample inputs retained for test coverage. Corrected recovery command, Node requirement note, activation description, and logging claim.
+- I01 complete: AGENTS.md translated and strengthened with English communication, local-only credential handling, security review rules, verification, and simple task resumption. Chinese Python test docstring translated; no behavior changes. Root integrated disjoint agent edits.
+- Verification: build passed; 82/83 existing Vitest tests passed outside sandbox with bash and writable npm cache. Remaining stderr assertion fails at `tests/session/session.test.ts:868`; no runtime fix attempted. Sandbox initially caused broader failures. 22 Markdown files had valid relative links and balanced fences; whitespace checks passed. No real terminal regression needed/run for documentation-only changes. Dependencies installed with lifecycle scripts disabled; selected dependency scripts/code inspected without executing hooks.
+- No commits, pushes, releases, real-account login, or credential inspection. Unrelated empty untracked `ISSUE.report.md` left untouched.
+
+## 2026-10-08 — S05: Explain wrapper architecture
+
+Expanded How It Works in both READMEs: external Codex responsibilities, per-run credential copy, top-level symlink behavior, live shared history/configuration, model-cache exclusion, account config limitations, local-only swaps, and cleanup. Verified against runtime.ts/session.ts/account-config.ts. README sections match; relative links, code fences, and whitespace pass. Documentation-only; no runtime or terminal tests needed.
+
+## 2026-10-08 — S06: Source development workflow
+
+Added mirrored README instructions for locked dependency installation, direct local entry point, working-directory selection, rebuild/test/debug cycle, optional npm link, and local tarball installation. Explain update-check opt-out, lifecycle/native setup hooks, and real terminal regression requirement. Built current checkout and smoke-tested help/version (0.2.8); Markdown mirror/link/fence/whitespace checks passed. No global install/link, credential action, or commit performed. Previously recorded 82/83 test result remains; no runtime change made. User's specific bug is not yet described.
+
+## 2026-10-08 — S07–S11: Source installation, recovery policy, and automatic diagnostics
+
+- S08 complete: Chinese README restored as current English README translation. Translation/guidance88950b3, security report0076f0b, inline-display explanation62d3c9a committed separately.
+- S07 implementation c027439: recovery preserves supported explicit launch settings (--no-daemon, approval/sandbox, config/profile/provider/model/remote) and parses valued options before resume. Six regression cases pass. Stale external daemon/auth state is plausible, not established; complete issue acceptance remains pending real terminal verification.
+- S10 complete: execute-bit build checkbc80420; explicit snapshot installer e0214a1. npm run install:local copies this checkout into the user npm global prefix with lifecycle hooks disabled. Fish resolves the installed snapshot; builds of the checkout no longer change that snapshot.
+- S11 implementation986bec9: launch/result context recorded continuously; private reports generated automatically on quota switches, exhaustion, recovery failures, and abnormal exits. Sanitized diagnostics CLI/debug,30-day default retention,7/custom days,20 unpinned cap,keep/release markers. No credentials/config/env contents/prompts/transcripts/workspace paths/raw session IDs exported. Reports remain local.
+- Verification: build passes; final suite100/101, unchanged missing-session stderr assertion failure at tests/session/session.test.ts:1040. Diagnostics/CLI41 focused tests and logger3 tests pass. Installed snapshot smoke verified dummy account rotation, exact flags, automatic report without debug opt-in, safe policy/build hash, seven-day retention,keep/release,0600 reports. Mirrored commands/local links/fences/whitespace pass. No GUI terminal acceptance, live credential inspection, real-account login, or process killing performed.
+- S09 code commits pushed through986bec9 to main using HTTPS with existing gh credential helper after SSH agent was unavailable. Origin config unchanged. Commits unsigned because configured GPG pinentry could not open; global signing config unchanged.
+- ISSUE.report.md was initially empty, later populated by user; it is explicitly temporary and remains untracked/uncommitted. Task records are maintained separately. New terminal checklist scenarios12/13 cover stale quota identity and automatic diagnostic display.
