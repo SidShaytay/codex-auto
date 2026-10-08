@@ -386,7 +386,7 @@ command -v codex-auto
 realpath (command -v codex-auto)
 ```
 
-最后一条命令使用 fish 语法；bash 中请用 `realpath "$(command -v codex-auto)"`。解析后的路径应指向当前检出版本的 `dist/index.js`。`npm link` 将全局命令链接到本地检出目录（[npm link 参考](https://docs.npmjs.com/cli/v11/commands/npm-link/)），可能替换该 npm 前缀下的已有命令。修改源码后重新构建即可，链接仍有效。如果 `PATH` 中其他安装的位置更靠前，请使用显式的 `node /path/to/your/fork/dist/index.js` 命令。
+最后一条命令使用 fish 语法；bash 中请用 `realpath "$(command -v codex-auto)"`。解析后的路径应指向当前检出版本的 `dist/index.js`。`npm link` 将全局命令链接到本地检出目录（[npm link 参考](https://docs.npmjs.com/cli/v11/commands/npm-link/)），可能替换该 npm 前缀下的已有命令。修改源码后重新构建即可；链接仍有效，构建也会确保 CLI 入口文件具有执行权限。如果 `PATH` 中其他安装的位置更靠前，请使用显式的 `node /path/to/your/fork/dist/index.js` 命令。
 
 ### 安装 fork 的固定快照
 

@@ -13,6 +13,18 @@ afterEach(async () => {
 });
 
 describe('package distribution', () => {
+  test('keeps the local CLI directly executable after rebuilding', async () => {
+    const appHome = await mkdtemp(path.join(tmpdir(), 'codex-auto-build-bin-'));
+    tempDirs.push(appHome);
+    await execFileAsync('npm', ['run', 'build'], { cwd: process.cwd(), env: process.env });
+    const { stdout } = await execFileAsync(path.resolve('dist/index.js'), ['--version'], {
+      cwd: process.cwd(),
+      env: { ...process.env, CODEX_AUTO_HOME: appHome, CODEX_AUTO_UPDATE_CHECK: '0' }
+    });
+    const packageJson = (await import('../../package.json', { with: { type: 'json' } })).default;
+    expect(stdout.trim()).toBe(packageJson.version);
+  }, 20_000);
+
   test('pack helper emits tarball filename and writes GITHUB_ENV', async () => {
     const packageJson = (await import('../../package.json', { with: { type: 'json' } })).default as {
       name: string;

@@ -386,7 +386,7 @@ command -v codex-auto
 realpath (command -v codex-auto)
 ```
 
-The last command uses fish syntax; in bash, use `realpath "$(command -v codex-auto)"`. The resolved path should end at this checkout's `dist/index.js`. `npm link` makes the global command point to the local checkout ([npm link reference](https://docs.npmjs.com/cli/v11/commands/npm-link/)); it can replace the existing command in that npm prefix. Rebuild after source edits; the link stays valid. If another installation appears earlier on `PATH`, use the explicit `node /path/to/your/fork/dist/index.js` command.
+The last command uses fish syntax; in bash, use `realpath "$(command -v codex-auto)"`. The resolved path should end at this checkout's `dist/index.js`. `npm link` makes the global command point to the local checkout ([npm link reference](https://docs.npmjs.com/cli/v11/commands/npm-link/)); it can replace the existing command in that npm prefix. Rebuild after source edits; the link stays valid, and the build keeps the CLI entry point executable. If another installation appears earlier on `PATH`, use the explicit `node /path/to/your/fork/dist/index.js` command.
 
 ### Install a snapshot of the fork
 
