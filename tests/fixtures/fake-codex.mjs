@@ -204,7 +204,31 @@ if (process.env.FAKE_CODEX_ENABLE_CSI_U_MODE === '1') {
 let waitingOnQuota = false;
 
 if (authText.includes('"account": "a"') || authText.includes('"account":"a"')) {
-  if (process.env.FAKE_CODEX_WAIT_ON_QUOTA === '1') {
+  if (process.env.FAKE_CODEX_STRUCTURED_REDRAW_QUOTA === '1') {
+    waitingOnQuota = true;
+    setTimeout(() => {
+      if (process.env.FAKE_CODEX_STRUCTURED_QUOTA_LARGE_RECORD === '1') {
+        appendFileSync(sessionFilePath, 'x'.repeat(300 * 1024) + '\n');
+      }
+      appendFileSync(sessionFilePath, `${JSON.stringify({
+        timestamp: new Date().toISOString(),
+        type: 'event_msg',
+        payload: { type: 'task_complete', turn_id: 'fake-turn', error: {
+          codex_error_info: 'usage_limit_exceeded',
+          message: `You've hit your usage limit. Upgrade to Pro to purchase more credits or try again at ${primaryRetryAt}.`
+        } }
+      })}\n`);
+      if (process.env.FAKE_CODEX_STRUCTURED_QUOTA_NO_LF === '1') {
+        process.stdout.write("■ You've hit your usage limit. To get more access now, send a request to your admin.");
+      } else {
+        writeQuotaMessage(primaryRetryAt);
+      }
+      process.stdout.write('\u001b[30;1H› \u001b[31;1HGoal hit usage limits (/goal resume)\n');
+      if (process.env.FAKE_CODEX_STRUCTURED_QUOTA_EXIT === '1') process.exit(0);
+    }, 100);
+    // A missed detection exits without rotating, rather than hanging the test.
+    setTimeout(() => process.exit(0), Number.parseInt(process.env.FAKE_CODEX_STRUCTURED_QUOTA_EXIT_DELAY_MS ?? '1200', 10));
+  } else if (process.env.FAKE_CODEX_WAIT_ON_QUOTA === '1') {
     process.stdout.write("■ You've hit your usage limit. To get more access now, send a request to your admin.\n");
     process.stdout.write('Approaching rate limits\n');
     process.stdout.write('Switch to gpt-5.1-codex-mini for lower credit usage?\n');

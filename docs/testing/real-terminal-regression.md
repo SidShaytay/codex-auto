@@ -95,6 +95,8 @@ Use a controllable repository fixture or reproducible account setup to trigger q
 Accept when:
 
 - A clear quota message triggers detection and rotation to the next account.
+- In an explicitly bound resumed session, append a fresh `event_msg` / `task_complete` record with `error.codex_error_info: "usage_limit_exceeded"` and redraw `›` below the quota message in the same output chunk. Rotation must still occur and preserve the session ID. Repeat with pre-existing error records, a newly appended old-timestamp record, and an error in another thread; none must trigger the event path.
+- Verify the running wrapper started after the tested build. Installing a patch does not replace code already loaded by a live wrapper; record its launch time and actual resume ID rather than inferring them from a stale pane title.
 - Recovery resumes the same session.
 - Replayed quota text from an old transcript does not incorrectly mark the current account as newly exhausted.
 - A newly interactive session whose recovery target becomes visible shortly afterward is given time to bind before recovery is abandoned.

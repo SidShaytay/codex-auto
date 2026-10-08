@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2
+
+### Fixed
+
+- Bound interactive sessions detect newly appended structured `usage_limit_exceeded` completion errors even when Codex redraws the prompt below the quota message. Existing transcript records and other threads do not trigger this event path. No credential migration is required; running wrappers must be exited and resumed to load the new build.
+- Screen-text detection remains the fallback when a bound session or structured event is unavailable. The five-second history-replay limitation remains; this patch does not establish complete event-based detection or full real terminal acceptance.
+
 ## 0.3.1
 
 ### Fixed

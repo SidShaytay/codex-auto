@@ -50,6 +50,7 @@
 - Run checks appropriate to the change. For runtime changes, use `npm run build` and `npm test`, plus focused tests as needed.
 - For documentation-only changes, check technical accuracy, local links, and translation completeness. Do not claim runtime verification unless it actually ran.
 - Any change affecting interactive terminal behavior must pass both automated tests and real terminal regression before it can be declared complete.
+- Permission to inspect an existing terminal session does not authorize new terminal windows, layout changes, input injection, or restarting that session. Ask before those actions unless the user explicitly requested them. If permission or a suitable terminal is unavailable, record real terminal regression as pending rather than launching a GUI to bypass the limitation.
 
 ### Changes requiring real terminal regression
 

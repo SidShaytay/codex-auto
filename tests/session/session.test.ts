@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { PassThrough, Writable } from 'node:stream';
 import { describe, expect, test } from 'vitest';
@@ -954,6 +955,53 @@ console.log('available account resumed');
       await cleanupTempDir(codexHome);
     }
   });
+
+  test.each([
+    { immediateExit: '0', noLf: '0', largeRecord: '0' },
+    { immediateExit: '1', noLf: '0', largeRecord: '0' },
+    { immediateExit: '0', noLf: '1', largeRecord: '0' },
+    { immediateExit: '1', noLf: '1', largeRecord: '1' },
+    ...(existsSync('/usr/bin/fish') ? [{ immediateExit: '0', noLf: '1', largeRecord: '0', shell: '/usr/bin/fish' }] : [])
+  ])('fresh bound structured quota survives redraw: $immediateExit/$noLf/$largeRecord/$shell', async ({ immediateExit, noLf, largeRecord, shell = '/bin/bash' }) => {
+    const appHome = await createTempAppHome();
+    const codexHome = await createTempAppHome('codex-home-');
+    try {
+      await seedCodexHome(codexHome);
+      await seedState(appHome, {
+        version: 1, accounts: ['a', 'b'], currentIndex: 0,
+        preferredAccountName: 'a', lastSuccessfulAccount: null,
+        lastSessionId: null, updatedAt: '2026-04-17T00:00:00.000Z'
+      });
+      await seedAccount(appHome, 'a', { account: 'a', token: 'a-token' });
+      await seedAccount(appHome, 'b', { account: 'b', token: 'b-token' });
+      const startedAt = Date.now();
+      const result = await runManagedSession({
+        appHome, codexHome, workspaceDir: process.cwd(),
+        extraArgs: ['resume', 'session-structured-quota'],
+        codexCommand: `node ${path.resolve(process.cwd(), 'tests/fixtures/fake-codex.mjs')}`,
+        env: { ...process.env, SHELL: shell,
+          FAKE_CODEX_SESSION_ID: 'session-structured-quota',
+          FAKE_CODEX_STRUCTURED_REDRAW_QUOTA: '1',
+          FAKE_CODEX_STRUCTURED_QUOTA_EXIT: immediateExit,
+          FAKE_CODEX_STRUCTURED_QUOTA_NO_LF: noLf,
+          FAKE_CODEX_STRUCTURED_QUOTA_LARGE_RECORD: largeRecord,
+          FAKE_CODEX_STRUCTURED_QUOTA_EXIT_DELAY_MS: '8000',
+          FAKE_CODEX_PRIMARY_RETRY_AT: '7:37 PM'
+        },
+        stdin: new TtyInputStream() as TtyInputStream & NodeJS.ReadStream,
+        stdout: new TtyCaptureStream(), stderr: new TtyCaptureStream(), interactive: true
+      });
+      expect(result).toMatchObject({ switchCount: 1, finalAccount: 'b', exhaustedAll: false, exitCode: 0 });
+      expect(Date.now() - startedAt).toBeLessThan(4000);
+      await expect(loadState(appHome)).resolves.toMatchObject({
+        lastSessionId: 'session-structured-quota',
+        retryAvailabilityByAccount: { a: { displayText: '7:37 PM' } }
+      });
+    } finally {
+      await cleanupTempDir(appHome);
+      await cleanupTempDir(codexHome);
+    }
+  }, 15_000);
 
   test('interactive cursor redraw finishes replay before quota rotation', async () => {
     const appHome = await createTempAppHome();

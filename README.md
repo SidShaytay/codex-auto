@@ -471,6 +471,7 @@ A hard kill or power loss cannot trigger a final report; the already recorded ev
 - **No accounts configured:** run `codex-auto add <name>` and complete the login, then start `codex-auto` again.
 - **Codex executable not found:** ensure `codex` is on `PATH`, or set `CODEX_AUTO_CODEX_BIN` to its executable path.
 - **Recovery cannot confirm a session:** use Codex's session picker to select the intended session. Automatic recovery stops when it cannot safely identify that session.
+- **Quota error stays on screen without switching:** for an interactive run with a bound session ID, Codex's fresh structured `usage_limit_exceeded` event triggers rotation even when a prompt redraw hides the error from screen-text detection. Existing records and other threads do not trigger this event path. Codex versions that omit this event, sessions not yet bound, and the direct transport still lack this protection. Updating or reinstalling does not update running wrappers; exit and resume with the new build when convenient.
 - **All accounts exhausted:** check `codex-auto list` for recorded retry times and confirm current availability in Codex. Interactive startup allows five seconds for history replay before acting on quota text without a recognized prompt; old messages before the latest prompt do not exhaust the resumed account. This timing safeguard can still misclassify replay that takes longer than five seconds.
 
 ## Known Limitations

@@ -10,6 +10,7 @@ import { pruneIncidentDiagnostics, writeIncidentDiagnostics } from './diagnostic
 import { extractQuotaRetryAvailability, getOutputSinceLatestPrompt, hasQuotaError, sanitizeTerminalOutput } from './detection.js';
 import { markAccountUsed } from './accounts.js';
 import { readTextIfExists } from './fs.js';
+import { createQuotaEventReader } from './quota-events.js';
 import { accountAuthPath, instanceHome, resolveCodexHome } from './paths.js';
 import { getAccountByName, getCurrentAccount, getPreferredAccount, pickNextAccount } from './rotation.js';
 import { writeManagedRunState } from './run-state.js';
@@ -720,7 +721,8 @@ async function launchResumeInvocation(options: {
     env: options.env,
     stdin: options.stdin,
     stdout: options.stdout,
-    interactive: options.interactive
+    interactive: options.interactive,
+    boundSessionId: options.sessionId
   });
 }
 
@@ -734,6 +736,7 @@ async function launchInvocation(options: {
   stdin: NodeJS.ReadStream;
   stdout: OutputLike;
   interactive: boolean;
+  boundSessionId?: string | null;
 }): Promise<InvocationResult> {
   const command = buildCodexShellCommand(options.codexCommand, options.args);
   const shell = options.env.SHELL || '/bin/zsh';
@@ -818,6 +821,13 @@ async function launchInvocation(options: {
         });
       });
     }
+    // Snapshot before spawn: replayed records are not fresh exhaustion evidence.
+    const quotaEvents = options.boundSessionId
+      ? await createQuotaEventReader(path.join(options.instanceDir, 'sessions'), options.boundSessionId).catch(() => null)
+      : null;
+    let eventPollingStopped = false;
+    let eventPollTimer: NodeJS.Timeout | null = null;
+    let eventPollInFlight: Promise<string | null> | null = null;
     const terminalSize = getTerminalSize(stdout);
     const ptyProcess = spawnPty(shell, ['-lc', command], {
       name: options.env.TERM || 'xterm-256color',
@@ -929,6 +939,23 @@ async function launchInvocation(options: {
       }, prePromptGraceMs);
     };
 
+    const pollQuotaEvents = async (): Promise<void> => {
+      if (!quotaEvents) return;
+      eventPollInFlight = quotaEvents.poll().catch(() => null);
+      const message = await eventPollInFlight;
+      if (eventPollingStopped || interrupted || quotaDetected) return;
+      if (message !== null && message !== undefined) {
+        clearPendingPrePromptQuotaTimer();
+        clearPendingPostPromptQuotaTimer();
+        quotaDetected = true;
+        quotaRelevantOutput = sanitizeTerminalOutput(message);
+        stopPtyForQuota();
+        return;
+      }
+      eventPollTimer = setTimeout(() => { void pollQuotaEvents(); }, 100);
+    };
+    if (quotaEvents) void pollQuotaEvents();
+
     const dataDisposable = ptyProcess.onData((data) => {
       stdout.write(data);
       sanitizedOutput = `${sanitizedOutput}${sanitizeTerminalOutput(data)}`.slice(-20000);
@@ -936,7 +963,9 @@ async function launchInvocation(options: {
     });
 
     return new Promise<InvocationResult>((resolve) => {
-      const exitDisposable = ptyProcess.onExit(({ exitCode }) => {
+      const exitDisposable = ptyProcess.onExit(async ({ exitCode }) => {
+        eventPollingStopped = true;
+        if (eventPollTimer) clearTimeout(eventPollTimer);
         dataDisposable.dispose();
         exitDisposable.dispose();
         options.stdin.off('data', stdinDataHandler);
@@ -948,6 +977,15 @@ async function launchInvocation(options: {
           clearTimeout(quotaShutdownTimer);
         }
         restoreTerminalModes(stdout);
+        // A completion event may be written immediately before process exit.
+        // Finish the serialized read, then drain one final chunk before classifying.
+        if (quotaEvents && !interrupted && !quotaDetected) {
+          const message = (await eventPollInFlight) ?? await quotaEvents.poll().catch(() => null);
+          if (message !== null) {
+            quotaDetected = true;
+            quotaRelevantOutput = sanitizeTerminalOutput(message);
+          }
+        }
         const finalEvaluation = quotaDetected
           ? {
               quotaError: true,
@@ -1233,7 +1271,8 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
             env,
             stdin,
             stdout,
-            interactive
+            interactive,
+            boundSessionId: lastSessionId
           })
         : await launchResumeInvocation({
             appHome: options.appHome,
