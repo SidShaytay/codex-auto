@@ -42,6 +42,36 @@ const nonInteractiveSubcommands = new Set([
   'apply', 'a', 'cloud', 'exec-server', 'features', 'help'
 ]);
 
+// Validate before any account import or activation. Do not interpret literal values as flags.
+export function enforceManagedServerPolicy(args: string[]): string[] {
+  const result: string[] = [];
+  let hasNoDaemon = false;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    if (arg === '--') { result.push(...args.slice(index)); break; }
+    const option = valuedOption(arg);
+    const name = arg.split('=', 1)[0];
+    if (name === '--remote' || name === '--remote-auth-token-env') {
+      throw new Error(`${name} is incompatible with codex-auto: account switching requires a fresh local server (--no-daemon). Use codex directly to connect to another server.`);
+    }
+    if (arg === '--no-daemon') {
+      if (!hasNoDaemon) result.push(arg);
+      hasNoDaemon = true;
+      continue;
+    }
+    result.push(arg);
+    if (option && !option.inline && index + 1 < args.length) result.push(args[++index]!);
+  }
+  const commandIndex = findFirstPositionalIndex(result);
+  const command = result[commandIndex];
+  const delimiter = result.indexOf('--');
+  if ((delimiter === -1 || commandIndex < delimiter) && ['agents', 'app-server', 'remote-control'].includes(command ?? '')) {
+    throw new Error(`codex ${command} manages a shared server and is incompatible with codex-auto. Use codex ${command} directly.`);
+  }
+  if (!hasNoDaemon && (!command || !nonInteractiveSubcommands.has(command))) result.unshift('--no-daemon');
+  return result;
+}
+
 function buildFirstRunArgs(extraArgs: string[]): string[] {
   const args = [...extraArgs];
   if (!args.includes('--no-alt-screen')) {
@@ -682,6 +712,7 @@ async function launchResumeInvocation(options: {
     codexCommand: options.codexCommand,
     args: [
       'resume',
+      ...(options.policyArgs.includes('--no-daemon') ? [] : ['--no-daemon']),
       ...(options.policyArgs.includes('--no-alt-screen') ? options.policyArgs : ['--no-alt-screen', ...options.policyArgs]),
       options.sessionId,
       'Continue'
@@ -1075,6 +1106,7 @@ function buildInstanceId(): string {
 }
 
 export async function runManagedSession(options: RunManagedSessionOptions): Promise<RunManagedSessionResult> {
+  const managedArgs = enforceManagedServerPolicy(options.extraArgs ?? []);
   await ensureAppLayout(options.appHome);
   const stdout = options.stdout ?? (process.stdout as OutputLike);
   const stderr = options.stderr ?? (process.stderr as OutputLike);
@@ -1139,7 +1171,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
 
   await createInstanceOverlay(codexHome, instanceDir, authPath);
   lastSessionId = await resolveInitialResumeSessionId({
-    args: options.extraArgs ?? [],
+    args: managedArgs,
     instanceDir,
     workspaceDir: options.workspaceDir
   });
@@ -1148,7 +1180,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
   // session from state so that account switching can resume the correct session without
   // requiring the user to re-select from the picker on the new account.
   if (!lastSessionId) {
-    const firstPositional = (options.extraArgs ?? [])[findFirstPositionalIndex(options.extraArgs ?? [])];
+    const firstPositional = managedArgs[findFirstPositionalIndex(managedArgs)];
     if (firstPositional === 'resume') {
       lastSessionId = state.lastSessionId ?? null;
     }
@@ -1168,7 +1200,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
   }
 
   try {
-    const resumePolicyArgs = extractResumePolicyArgs(options.extraArgs ?? []);
+    const resumePolicyArgs = extractResumePolicyArgs(managedArgs);
     while (true) {
       let knownSessionIds = new Set<string>();
       let launchStartedAt = 0;
@@ -1186,7 +1218,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
         policy: summarizeLaunchPolicy(resumePolicyArgs)
       });
 
-      const firstRunArgs = buildFirstRunArgs(options.extraArgs ?? []);
+      const firstRunArgs = buildFirstRunArgs(managedArgs);
 
       const result: InvocationResult = firstRun
         ? await launchInvocation({

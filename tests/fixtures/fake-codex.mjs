@@ -3,6 +3,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import path from 'node:path';
 
 const args = process.argv.slice(2);
+const commandArgs = args.filter((arg) => arg !== '--no-daemon');
 const codexHome = process.env.CODEX_HOME;
 const logPath = process.env.FAKE_CODEX_LOG;
 
@@ -108,8 +109,8 @@ function writePrimarySessionArtifacts() {
   }
 }
 
-const isPickerResume = Boolean(pickerSessionId) && args[0] === 'resume' && args.slice(1).filter((arg) => !arg.startsWith('--')).length === 0;
-const skipSessionArtifactsForResume = (process.env.FAKE_CODEX_SKIP_SESSION_ARTIFACTS_ON_RESUME === '1' && args[0] === 'resume') || isPickerResume;
+const isPickerResume = Boolean(pickerSessionId) && commandArgs[0] === 'resume' && commandArgs.slice(1).filter((arg) => !arg.startsWith('--')).length === 0;
+const skipSessionArtifactsForResume = (process.env.FAKE_CODEX_SKIP_SESSION_ARTIFACTS_ON_RESUME === '1' && commandArgs[0] === 'resume') || isPickerResume;
 
 if (logPath) {
   appendFileSync(logPath, `${JSON.stringify({ args, authText })}\n`, 'utf8');
@@ -215,9 +216,9 @@ if (authText.includes('"account": "a"') || authText.includes('"account":"a"')) {
   }
 }
 
-if (!waitingOnQuota && args[0] === 'resume') {
+if (!waitingOnQuota && commandArgs[0] === 'resume') {
   const resumeUsesLast = args.includes('--last');
-  const positionalArgs = args.slice(1).filter((arg) => !arg.startsWith('--'));
+  const positionalArgs = commandArgs.slice(1).filter((arg) => !arg.startsWith('--'));
   const sessionId = resumeUsesLast ? 'last' : positionalArgs[0] ?? '';
   const prompt = positionalArgs.at(-1) ?? '';
 

@@ -34,3 +34,7 @@ Added build-time Git metadata to both version commands and diagnostic reports in
 ## 2026-10-08 — S13: Mandatory task tracking
 
 AGENTS.md requires every code change, bug fix, and feature addition to enter TASKS.md before code edits, including small changes. Scope, findings, verification, commit and handoff checkpoints must stay current. Required instruction language checked. S12 was recorded before its implementation; this makes that workflow unconditional for future code work.
+
+## 2026-10-08 — S14–S15: Enforced local server mode, 0.3.0
+
+Recorded implementation plan before code edits. Managed interactive launches/resumes enforce and deduplicate --no-daemon. Reject remote endpoint/auth options and shared-server commands before account import; preserve literal argument values and non-interactive exec. Tests and fixture expectations updated. Build passed; full suite114/115, sole existing missing-session warning assertion still failing. Version and root lockfile now0.3.0; changelog, SemVer guidance, README mirrors and scenario12 updated. Deferred daemon/desktop compatibility documented as future research without promising shared authentication support. Local links/fences/version consistency checked. Real terminal acceptance remains pending. Temporary ISSUE.report.md excluded; user README wording preserved.

@@ -2,9 +2,7 @@
 
 English | [简体中文](./README.zh-CN.md)
 
-A multi-account switcher for the `codex` CLI.
-
-It keeps account auth under `~/.codex-auto/accounts/`, runs managed Codex sessions on top of your existing setup, and automatically rotates to the next account when the current one hits a rate limit.
+A wrapper around `codex` CLI to switch between multiple account to keep going without stopping sessions or work.
 
 ## Prerequisites
 
@@ -112,7 +110,7 @@ codex-auto --version
 codex-auto version
 ```
 
-Source builds include their Git revision in version output, for example `0.2.8+git.abcdef123456`. A `.dirty` suffix means tracked files had uncommitted changes when built. The revision is saved in the installed snapshot, so it still identifies that build outside the checkout. Builds without Git metadata show the base package version.
+Source builds include their Git revision in version output, for example `0.3.0+git.abcdef123456`. A `.dirty` suffix means tracked files had uncommitted changes when built. The revision is saved in the installed snapshot, so it still identifies that build outside the checkout. Builds without Git metadata show the base package version.
 
 In an interactive terminal, `codex-auto` periodically checks npm for a newer `codex-auto` release. When one is available, it prompts you to update now, skip that version, or postpone the reminder. Set `CODEX_AUTO_UPDATE_CHECK=0` to disable the check.
 
@@ -248,11 +246,17 @@ It does not walk every subfolder and create individual links. A single link such
 
 ### What happens when an account hits its limit?
 
-The wrapper keeps the same temporary home, replaces only its local `auth.json`, and launches `codex resume --no-alt-screen <session-id> Continue` for the session bound to that run. It removes the temporary home when the managed run finishes; shared files in the source home remain. Normal managed runs do not replace the source home's `auth.json`.
+The wrapper keeps the same temporary home, replaces only its local `auth.json`, and launches `codex resume --no-daemon --no-alt-screen <session-id> Continue` for the session bound to that run. It removes the temporary home when the managed run finishes; shared files in the source home remain. Normal managed runs do not replace the source home's `auth.json`.
 
 `codex-auto activate <name>` is the explicit command that writes an account's `auth.json` back to the source `CODEX_HOME` for native `codex` usage. It does not copy account `config.toml`.
 
 Interactive sessions keep the standard Codex terminal experience, including full-screen and split-pane workflows, while `codex-auto` continues automatic account rotation and session recovery in the background and returns control to your shell in a normal input state after a forced stop or quota-driven switch.
+
+### A fresh local server for each run
+
+The wrapper enforces `--no-daemon` on interactive launches and automatic resumes, keeping one copy if supplied repeatedly. You do not need to type it. A running shared server does not automatically read externally replaced credentials, so switching accounts requires a fresh server. Codex must support this flag; unsupported versions fail rather than falling back to a shared server.
+
+`--remote` (including `--remote=...`), `--remote-auth-token-env`, and server commands (`agents`, `app-server`, `remote-control`) are incompatible and rejected before account import or launch. Use native `codex` to connect to another server or browse shared agents. Non-interactive commands such as `exec` keep their existing arguments.
 
 ### Inline terminal display
 
@@ -273,10 +277,10 @@ When a rate limit is hit:
 5. Run:
 
 ```bash
-codex resume --no-alt-screen <session-id> Continue
+codex resume --no-daemon --no-alt-screen <session-id> Continue
 ```
 
-Recovery preserves explicitly supplied daemon, approval, sandbox, configuration, profile, model, and provider settings. For example, when you start with:
+Recovery preserves explicitly supplied approval, sandbox, configuration, profile, model, and provider settings. For example, when you start with:
 
 ```sh
 codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
@@ -479,6 +483,13 @@ A hard kill or power loss cannot trigger a final report; the already recorded ev
 
 - [Real-terminal regression checklist](./docs/testing/real-terminal-regression.md)
 - [Security review and credential flow](./docs/security-review.md)
+- [Changelog](./CHANGELOG.md)
+
+## Future Directions
+
+Shared-daemon and ChatGPT desktop-app compatibility are deferred. Possible approaches include a wrapper-owned server or local app-server APIs for configuration and login changes. A separate server needs separate credential storage and explicit rules for sharing history; a different connection address alone does not provide isolation.
+
+Before adopting either approach, verify saved ChatGPT-account activation without repeated browser login, credential refresh, in-flight requests, conversation resume across servers, and effects on other clients. The wrapper currently switches its own Codex sessions and does not manage desktop-app login. See [OpenAI’s guidance on credential updates](https://github.com/openai/codex/issues/49651#issuecomment-5966427084).
 
 ## License
 

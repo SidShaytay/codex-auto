@@ -13,7 +13,7 @@ import { runCodexLogin, resolveCodexCommand } from './lib/codex-bin.js';
 import { resolveAppHome, resolveCodexHome } from './lib/paths.js';
 import { loadState } from './lib/state.js';
 import { ensureAppLayout } from './lib/runtime.js';
-import { runManagedSession } from './lib/session.js';
+import { enforceManagedServerPolicy, runManagedSession } from './lib/session.js';
 import { maybePromptForUpdate } from './lib/update-check.js';
 import { formatBuildVersion } from './lib/build-info.js';
 import { collectDiagnostics, setIncidentKeep } from './lib/diagnostics.js';
@@ -111,6 +111,13 @@ export async function runCli(argv: string[], options: CliRunOptions = {}): Promi
 
   const { accountName, codexHome, rest } = extractManagedOptions(argv);
   const selectedCodexHome = codexHome ?? defaultCodexHome;
+
+  if (!isOwnCommand(rest)) {
+    try { enforceManagedServerPolicy(rest); } catch (error) {
+      stderr.write(`${(error as Error).message}\n`);
+      return 1;
+    }
+  }
 
   if (shouldPromptForUpdate(rest)) {
     await maybePromptForUpdate({

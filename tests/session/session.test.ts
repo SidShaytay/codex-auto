@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { PassThrough, Writable } from 'node:stream';
 import { describe, expect, test } from 'vitest';
 import { instancesRoot } from '../../src/lib/paths.js';
-import { runManagedSession } from '../../src/lib/session.js';
+import { enforceManagedServerPolicy, runManagedSession } from '../../src/lib/session.js';
 import { loadState } from '../../src/lib/state.js';
 import { cleanupTempDir, createTempAppHome, seedAccount, seedState } from '../helpers/temp.js';
 
@@ -79,6 +79,20 @@ class TtyInputStream extends PassThrough {
 }
 
 describe('managed session runner', () => {
+  test.each(['--remote', '--remote=unix:///tmp/server', '--remote-auth-token-env', '--remote-auth-token-env=TOKEN', 'agents', 'app-server', 'remote-control'])(
+    'rejects incompatible server option %s before launching', async (arg) => {
+      await expect(runManagedSession({ appHome: '/unused', workspaceDir: '/unused', extraArgs: [arg] }))
+        .rejects.toThrow(/incompatible/);
+    }
+  );
+  test('enforces one daemon opt-out and preserves literal values and exec', () => {
+    expect(enforceManagedServerPolicy([])).toEqual(['--no-daemon']);
+    expect(enforceManagedServerPolicy(['resume', '--no-daemon', '--no-daemon', 'id']))
+      .toEqual(['resume', '--no-daemon', 'id']);
+    expect(enforceManagedServerPolicy(['-m', '--remote', '--', '--remote']))
+      .toEqual(['--no-daemon', '-m', '--remote', '--', '--remote']);
+    expect(enforceManagedServerPolicy(['exec', 'hello'])).toEqual(['exec', 'hello']);
+  });
   test.each([
     {
       name: 'the reported command with global valued flags before resume',
@@ -106,12 +120,10 @@ describe('managed session runner', () => {
       args: [
         '-anever', '-sread-only', '-prestricted', '-mtest-model', '-cfeatures.example=true',
         'resume', 'policy-session', '--no-daemon', '--add-dir=/tmp', '-C', process.cwd(),
-        '--remote=unix:///tmp/test-codex.sock', '--remote-auth-token-env', 'TEST_REMOTE_TOKEN'
       ],
       policy: [
         '-anever', '-sread-only', '-prestricted', '-mtest-model', '-cfeatures.example=true',
         '--no-daemon', '--add-dir=/tmp', '-C', process.cwd(),
-        '--remote=unix:///tmp/test-codex.sock', '--remote-auth-token-env', 'TEST_REMOTE_TOKEN'
       ]
     },
     {
@@ -175,8 +187,10 @@ console.log('available account resumed');
 
       expect(result).toMatchObject({ finalAccount: 'b', switchCount: 1, exitCode: 0, exhaustedAll: false });
       const invocations = (await readFile(logPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-      const firstArgs = args.includes('--no-alt-screen') ? args : [...args, '--no-alt-screen'];
-      const resumePolicy = policy.includes('--no-alt-screen') ? policy : ['--no-alt-screen', ...policy];
+      const normalizedArgs = enforceManagedServerPolicy(args);
+      const firstArgs = normalizedArgs.includes('--no-alt-screen') ? normalizedArgs : [...normalizedArgs, '--no-alt-screen'];
+      const normalizedPolicy = enforceManagedServerPolicy(policy);
+      const resumePolicy = normalizedPolicy.includes('--no-alt-screen') ? normalizedPolicy : ['--no-alt-screen', ...normalizedPolicy];
       expect(invocations).toEqual([
         { account: 'a', args: firstArgs },
         { account: 'b', args: ['resume', ...resumePolicy, 'policy-session', 'Continue'] }
@@ -286,7 +300,7 @@ console.log('available account resumed');
       expect(result.finalAccount).toBe('b');
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","session-123","Continue"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","session-123","Continue"]');
       expect(await readFile(path.join(codexHome, 'session_index.jsonl'), 'utf8')).toContain('session-123');
       await expect(readdir(instancesRoot(appHome))).resolves.toEqual([]);
       await expect(loadState(appHome)).resolves.toMatchObject({
@@ -345,8 +359,8 @@ console.log('available account resumed');
       expect(result.switchCount).toBe(1);
       expect(result.finalAccount).toBe('b');
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","resume-explicit-session","--no-alt-screen"]');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","resume-explicit-session","Continue"]');
+      expect(logText).toContain('"args":["--no-daemon","resume","resume-explicit-session","--no-alt-screen"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","resume-explicit-session","Continue"]');
       await expect(loadState(appHome)).resolves.toMatchObject({
         lastSessionId: 'resume-explicit-session'
       });
@@ -396,8 +410,8 @@ console.log('available account resumed');
       expect(result.finalAccount).toBe('b');
       const logText = await readFile(logPath, 'utf8');
       // First run uses original args; second run uses state.lastSessionId to resume
-      expect(logText).toContain('"args":["resume","--no-alt-screen"]');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","state-last-session","Continue"]');
+      expect(logText).toContain('"args":["--no-daemon","resume","--no-alt-screen"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","state-last-session","Continue"]');
       expect(stderr.read()?.toString() ?? '').not.toContain('Unable to safely resume bound session');
     } finally {
       await cleanupTempDir(appHome);
@@ -447,8 +461,8 @@ console.log('available account resumed');
       expect(result.switchCount).toBe(1);
       expect(result.finalAccount).toBe('b');
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen"]');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","picker-session","Continue"]');
+      expect(logText).toContain('"args":["--no-daemon","resume","--no-alt-screen"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","picker-session","Continue"]');
       await expect(loadState(appHome)).resolves.toMatchObject({
         lastSessionId: 'picker-session'
       });
@@ -501,8 +515,8 @@ console.log('available account resumed');
       expect(result.switchCount).toBe(1);
       expect(result.finalAccount).toBe('b');
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--last","--no-alt-screen"]');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","resume-workspace-session","Continue"]');
+      expect(logText).toContain('"args":["--no-daemon","resume","--last","--no-alt-screen"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","resume-workspace-session","Continue"]');
       await expect(loadState(appHome)).resolves.toMatchObject({
         lastSessionId: 'resume-workspace-session'
       });
@@ -550,7 +564,7 @@ console.log('available account resumed');
       expect(result.finalAccount).toBe('b');
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","session-upgrade-prompt","Continue"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","session-upgrade-prompt","Continue"]');
       await expect(loadState(appHome)).resolves.toMatchObject({
         lastSessionId: 'session-upgrade-prompt',
         retryAvailabilityByAccount: {
@@ -648,7 +662,7 @@ console.log('available account resumed');
       expect(result.finalAccount).toBe('b');
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","session-456","Continue"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","session-456","Continue"]');
     } finally {
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);
@@ -692,7 +706,7 @@ console.log('available account resumed');
       expect(result.finalAccount).toBe('b');
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","session-from-file","Continue"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","session-from-file","Continue"]');
       await expect(loadState(appHome)).resolves.toMatchObject({
         lastSessionId: 'session-from-file'
       });
@@ -739,8 +753,8 @@ console.log('available account resumed');
       expect(result.finalAccount).toBe('b');
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","session-owned","Continue"]');
-      expect(logText).not.toContain('"args":["resume","--no-alt-screen","session-competing","Continue"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","session-owned","Continue"]');
+      expect(logText).not.toContain('"args":["resume","--no-alt-screen","--no-daemon","session-competing","Continue"]');
     } finally {
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);
@@ -784,8 +798,8 @@ console.log('available account resumed');
       expect(result.finalAccount).toBe('b');
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","session-project-a","Continue"]');
-      expect(logText).not.toContain('"args":["resume","--no-alt-screen","session-project-b","Continue"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","session-project-a","Continue"]');
+      expect(logText).not.toContain('"args":["resume","--no-alt-screen","--no-daemon","session-project-b","Continue"]');
     } finally {
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);
@@ -875,7 +889,7 @@ console.log('available account resumed');
       expect(result.exhaustedAll).toBe(false);
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","session-history","Continue"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","session-history","Continue"]');
       await expect(loadState(appHome)).resolves.toMatchObject({
         currentIndex: 1,
         lastSuccessfulAccount: 'b'
@@ -1035,8 +1049,8 @@ console.log('available account resumed');
       expect(result.exitCode).not.toBe(0);
 
       const logText = await readFile(logPath, 'utf8');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","missing-session","Continue"]');
-      expect(logText).not.toContain('"args":["resume","--last","--no-alt-screen"]');
+      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","missing-session","Continue"]');
+      expect(logText).not.toContain('"args":["--no-daemon","resume","--last","--no-alt-screen"]');
       expect(stderr.read()?.toString() ?? '').toContain('Unable to safely resume bound session');
     } finally {
       await cleanupTempDir(appHome);
@@ -1096,7 +1110,7 @@ process.exit(0);
       });
 
       expect(result.exitCode).toBe(0);
-      await expect(readFile(shellLogPath, 'utf8')).resolves.toMatch(/^node.*\|-lc codex '--no-alt-screen'/);
+      await expect(readFile(shellLogPath, 'utf8')).resolves.toMatch(/^node.*\|-lc codex '--no-daemon' '--no-alt-screen'/);
       expect(stdin.rawModeCalls).toEqual([true, false]);
     } finally {
       stdin.end();
@@ -1148,7 +1162,7 @@ process.exit(0);
       expect(result.finalAccount).toBe('b');
       expect(stdin.rawModeCalls).toEqual([true, false, true, false]);
       await expect(readFile(logPath, 'utf8')).resolves.toContain(
-        '"args":["resume","--no-alt-screen","interactive-session","Continue"]'
+        '"args":["resume","--no-alt-screen","--no-daemon","interactive-session","Continue"]'
       );
       await expect(loadState(appHome)).resolves.toMatchObject({
         currentIndex: 1,
@@ -1210,7 +1224,7 @@ process.exit(0);
       expect(result.switchCount).toBe(1);
       expect(result.finalAccount).toBe('b');
       await expect(readFile(logPath, 'utf8')).resolves.toContain(
-        '"args":["resume","--no-alt-screen","interactive-delayed-session","Continue"]'
+        '"args":["resume","--no-alt-screen","--no-daemon","interactive-delayed-session","Continue"]'
       );
       await expect(loadState(appHome)).resolves.toMatchObject({
         lastSessionId: 'interactive-delayed-session'
@@ -1261,7 +1275,7 @@ process.exit(0);
       expect(result.switchCount).toBe(1);
       expect(result.finalAccount).toBe('b');
       await expect(readFile(logPath, 'utf8')).resolves.toContain(
-        '"args":["resume","--no-alt-screen","non-interactive-delayed-session","Continue"]'
+        '"args":["resume","--no-alt-screen","--no-daemon","non-interactive-delayed-session","Continue"]'
       );
       await expect(loadState(appHome)).resolves.toMatchObject({
         lastSessionId: 'non-interactive-delayed-session'

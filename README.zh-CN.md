@@ -112,7 +112,7 @@ codex-auto --version
 codex-auto version
 ```
 
-源码构建会在版本输出中包含 Git 提交标识，例如 `0.2.8+git.abcdef123456`。`.dirty` 后缀表示构建时已跟踪的文件存在未提交更改。提交标识保存在安装快照中，因此离开源码目录后仍能识别该构建。没有 Git 元数据的构建显示基础包版本。
+源码构建会在版本输出中包含 Git 提交标识，例如 `0.3.0+git.abcdef123456`。`.dirty` 后缀表示构建时已跟踪的文件存在未提交更改。提交标识保存在安装快照中，因此离开源码目录后仍能识别该构建。没有 Git 元数据的构建显示基础包版本。
 
 在交互式终端中，`codex-auto` 会定期检查 npm 上是否有新版本。发现新版本时，会提示立即更新、跳过该版本或稍后提醒。设置 `CODEX_AUTO_UPDATE_CHECK=0` 可关闭检查。
 
@@ -248,11 +248,17 @@ codex-auto add work --auth /path/to/auth.json --config /path/to/config.toml
 
 ### 账号触发额度限制后会怎样？
 
-包装器保留同一临时 home，仅替换其中的本地 `auth.json`，并为本次运行绑定的会话启动 `codex resume --no-alt-screen <session-id> Continue`。受管运行结束时会删除临时 home，源 home 中的共享文件则保留。正常受管运行不会替换源 home 的 `auth.json`。
+包装器保留同一临时 home，仅替换其中的本地 `auth.json`，并为本次运行绑定的会话启动 `codex resume --no-daemon --no-alt-screen <session-id> Continue`。受管运行结束时会删除临时 home，源 home 中的共享文件则保留。正常受管运行不会替换源 home 的 `auth.json`。
 
 `codex-auto activate <name>` 是显式将账号的 `auth.json` 写回源 `CODEX_HOME` 的命令，供原生 `codex` 使用。它不会复制账号的 `config.toml`。
 
 交互式会话保持标准 Codex 终端体验，包括全屏和分屏工作流程；同时 `codex-auto` 在后台自动切换账号并恢复会话，在强制停止或额度触发切号后将控制权交还给输入状态正常的 shell。
+
+### 每次运行使用新的本地服务器
+
+包装器在交互式启动和自动恢复时强制添加 `--no-daemon`，重复参数只保留一次。无需手动指定。已运行的共享服务器不会自动读取外部替换的凭据，因此切号时必须启动新的服务器。Codex 必须支持此参数；不支持时会失败，不会退回共享服务器。
+
+`--remote`（包括 `--remote=...`）、`--remote-auth-token-env` 和服务器命令（`agents`、`app-server`、`remote-control`） 与此模式不兼容，会在导入账号或启动前被拒绝。需要连接其他服务器或查看共享代理时，请直接使用 `codex`。`exec` 等非交互式命令保留原有参数。
 
 ### 在普通终端缓冲区中显示
 
@@ -273,10 +279,10 @@ codex-auto add work --auth /path/to/auth.json --config /path/to/config.toml
 5. 执行：
 
 ```bash
-codex resume --no-alt-screen <session-id> Continue
+codex resume --no-daemon --no-alt-screen <session-id> Continue
 ```
 
-恢复会保留显式指定的守护进程、审批、沙箱、配置、配置档、模型和提供商设置。例如，使用以下命令启动时：
+恢复会保留显式指定的审批、沙箱、配置、配置档、模型和提供商设置。例如，使用以下命令启动时：
 
 ```sh
 codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
@@ -479,6 +485,13 @@ env CODEX_AUTO_DEBUG=1 codex-auto --no-daemon -a never --no-alt-screen -s danger
 
 - [真实终端回归清单](./docs/testing/real-terminal-regression.md)
 - [安全审查与凭据流向](./docs/security-review.md)
+- [更新日志](./CHANGELOG.md)
+
+## 后续方向
+
+共享守护进程和 ChatGPT 桌面应用兼容性暂不支持。未来可研究包装器独立管理的服务器，或通过本地 app-server API 更新配置与登录状态。独立服务器需要独立的凭据存储及明确的会话历史共享规则；不同连接地址本身不能实现隔离。
+
+实施前需验证已保存 ChatGPT 账号能否无须重新浏览器登录便激活、凭据刷新、处理中请求、跨服务器恢复，以及对其他客户端的影响。当前包装器只切换自己启动的 Codex 会话，不管理桌面应用登录。参阅 [OpenAI 关于凭据更新的说明](https://github.com/openai/codex/issues/49651#issuecomment-5966427084)。
 
 ## 许可证
 

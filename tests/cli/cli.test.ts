@@ -27,6 +27,22 @@ async function readPackageVersion(): Promise<string> {
 }
 
 describe('cli', () => {
+  test.each(['--remote=unix:///tmp/test', '--remote-auth-token-env=TOKEN', 'agents', 'app-server', 'remote-control'])(
+    'rejects %s before bootstrapping the source credentials', async (arg) => {
+      const appHome = await createTempAppHome();
+      const codexHome = await createTempAppHome('codex-home-');
+      const stderr = new CaptureStream();
+      try {
+        await writeFile(path.join(codexHome, 'auth.json'), '{"token":"fake-do-not-import"}');
+        expect(await runCli([arg], { appHome, codexHome, stderr, interactive: false })).toBe(1);
+        expect(stderr.toString()).toContain('incompatible');
+        expect((await loadState(appHome)).accounts).toEqual([]);
+      } finally {
+        await cleanupTempDir(appHome);
+        await cleanupTempDir(codexHome);
+      }
+    }
+  );
   test('version option prints the package version', async () => {
     const stdout = new CaptureStream();
 

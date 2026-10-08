@@ -82,7 +82,7 @@ describe('package distribution', () => {
     expect(packageJson.engines?.node).toBeTruthy();
     expect(packageJson.scripts?.prepare).toBeTruthy();
     expect(packageJson.scripts?.prepack).toBeTruthy();
-    expect(packageJson.files).toEqual(['dist', 'README.md', 'LICENSE']);
+    expect(packageJson.files).toEqual(['dist', 'README.md', 'CHANGELOG.md', 'LICENSE']);
 
     const packDir = await mkdtemp(path.join(tmpdir(), 'codex-auto-pack-'));
     tempDirs.push(packDir);
@@ -102,6 +102,7 @@ describe('package distribution', () => {
     expect(packedPaths).toContain('package.json');
     expect(packedPaths).toContain('README.md');
     expect(packedPaths).toContain('LICENSE');
+    expect(packedPaths).toContain('CHANGELOG.md');
     expect(packedPaths).toContain('dist/index.js');
     expect(packedPaths).toContain('dist/build-info.json');
     expect(packedPaths.some((entry) => entry.startsWith('src/'))).toBe(false);
