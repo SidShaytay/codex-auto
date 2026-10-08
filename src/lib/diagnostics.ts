@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { readBuildInfo } from './build-info.js';
 import { logsRoot, runsRoot } from './paths.js';
 
 const require = createRequire(import.meta.url);
@@ -197,6 +198,7 @@ export async function collectDiagnostics(options: { appHome: string; packageVers
       platform: process.platform,
       architecture: process.arch
     },
+    build: readBuildInfo(),
     wrapperBuildHash: await buildHash(),
     privacy: 'Account and run identifiers are aliases. Credentials, config, paths, prompts, environment, session IDs, and terminal transcripts are omitted.',
     collection: { limits, capped, skippedRecords, skippedFiles, logsAvailable: logFiles.available, runsAvailable: runFiles.available },

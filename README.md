@@ -112,6 +112,8 @@ codex-auto --version
 codex-auto version
 ```
 
+Source builds include their Git revision in version output, for example `0.2.8+git.abcdef123456`. A `.dirty` suffix means tracked files had uncommitted changes when built. The revision is saved in the installed snapshot, so it still identifies that build outside the checkout. Builds without Git metadata show the base package version.
+
 In an interactive terminal, `codex-auto` periodically checks npm for a newer `codex-auto` release. When one is available, it prompts you to update now, skip that version, or postpone the reminder. Set `CODEX_AUTO_UPDATE_CHECK=0` to disable the check.
 
 ## Use Cases

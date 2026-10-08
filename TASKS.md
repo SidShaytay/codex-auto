@@ -6,7 +6,7 @@
 - Objective: Security review, English documentation plus Chinese README, source installation, stale-account recovery investigation, automatic safe diagnostics, separate commits and push.
 - Authority: User authorized installation, delegation, bug work, commit/push. Respond in English. Credential switching stays local. Never stage `ISSUE.report.md`; user says it is temporary. Do not inspect real credentials or kill unrelated Codex processes.
 - Resume: See TASKS.md and continue.
-- Owner/writer: root. History: TASKS.log. Next ID:12.
+- Owner/writer: root. History: TASKS.log. Next ID:13.
 
 ## Delivered
 
@@ -21,3 +21,7 @@
 - [!] S11 — Need: real terminal acceptance of diagnostic display/input in scenario13. Code, privacy,retention,trigger and installed fake-account checks passed. Next: verify automatic report notice and optional debug lines preserve terminal redraw/input.
 
 Build passed. Full suite100/101; existing missing-session stderr assertion still fails at tests/session/session.test.ts:1040. Focused diagnostics/CLI41 and logger3 pass. No full supply-chain/native/external-Codex audit. Markdown checks pass. ISSUE.report.md untracked and excluded. Push uses per-command HTTPS gh credential helper because SSH agent unavailable; remote unchanged. GPG prompt unavailable, commits unsigned without changing signing config.
+
+## Active follow-up
+
+- [-] S12 — Add build-time Git commit/dirty provenance to version output and diagnostics. Root owns all edits. Build, CLI/diagnostics/package checks passed, including archive fallback and packed metadata. Next: commit separately, rebuild/reinstall clean revision, verify installed output outside the checkout, push. Untracked ISSUE.report.md excluded from dirty detection and commits.

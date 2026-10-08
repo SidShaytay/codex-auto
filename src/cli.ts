@@ -15,6 +15,7 @@ import { loadState } from './lib/state.js';
 import { ensureAppLayout } from './lib/runtime.js';
 import { runManagedSession } from './lib/session.js';
 import { maybePromptForUpdate } from './lib/update-check.js';
+import { formatBuildVersion } from './lib/build-info.js';
 import { collectDiagnostics, setIncidentKeep } from './lib/diagnostics.js';
 
 const require = createRequire(import.meta.url);
@@ -155,7 +156,7 @@ export async function runCli(argv: string[], options: CliRunOptions = {}): Promi
   program
     .name('codex-auto')
     .description('Multi-account switcher for the codex CLI.\nAll unrecognized arguments are forwarded to codex.')
-    .version(packageVersion, '-V, --version', 'display version')
+    .version(formatBuildVersion(packageVersion), '-V, --version', 'display version')
     .option('--account <name>', 'Start this run from a specific account')
     .option('--codex-home <path>', 'Use a specific source CODEX_HOME as the overlay base')
     .showHelpAfterError()
@@ -172,7 +173,7 @@ export async function runCli(argv: string[], options: CliRunOptions = {}): Promi
   });
 
   program.command('version').description('Print the current version').action(() => {
-    stdout.write(`${packageVersion}\n`);
+    stdout.write(`${formatBuildVersion(packageVersion)}\n`);
     exitCode = 0;
   });
 

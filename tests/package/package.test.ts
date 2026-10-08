@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
@@ -13,6 +13,18 @@ afterEach(async () => {
 });
 
 describe('package distribution', () => {
+  test('build metadata gracefully falls back when Git is unavailable', async () => {
+    const archive = await mkdtemp(path.join(tmpdir(), 'codex-auto-archive-build-'));
+    tempDirs.push(archive);
+    await mkdir(path.join(archive, 'scripts'));
+    await mkdir(path.join(archive, 'dist'));
+    const script = path.join(archive, 'scripts', 'write-build-info.mjs');
+    await copyFile('scripts/write-build-info.mjs', script);
+    await execFileAsync(process.execPath, [script], { env: { ...process.env, PATH: '' } });
+    expect(JSON.parse(await readFile(path.join(archive, 'dist', 'build-info.json'), 'utf8')))
+      .toEqual({ commit: null, dirty: false });
+  });
+
   test('keeps the local CLI directly executable after rebuilding', async () => {
     const appHome = await mkdtemp(path.join(tmpdir(), 'codex-auto-build-bin-'));
     tempDirs.push(appHome);
@@ -22,7 +34,9 @@ describe('package distribution', () => {
       env: { ...process.env, CODEX_AUTO_HOME: appHome, CODEX_AUTO_UPDATE_CHECK: '0' }
     });
     const packageJson = (await import('../../package.json', { with: { type: 'json' } })).default;
-    expect(stdout.trim()).toBe(packageJson.version);
+    const info = JSON.parse(await readFile('dist/build-info.json', 'utf8'));
+    const expected = info.commit ? `${packageJson.version}+git.${info.commit.slice(0, 12)}${info.dirty ? '.dirty' : ''}` : packageJson.version;
+    expect(stdout.trim()).toBe(expected);
   }, 20_000);
 
   test('pack helper emits tarball filename and writes GITHUB_ENV', async () => {
@@ -89,6 +103,7 @@ describe('package distribution', () => {
     expect(packedPaths).toContain('README.md');
     expect(packedPaths).toContain('LICENSE');
     expect(packedPaths).toContain('dist/index.js');
+    expect(packedPaths).toContain('dist/build-info.json');
     expect(packedPaths.some((entry) => entry.startsWith('src/'))).toBe(false);
     expect(packedPaths.some((entry) => entry.startsWith('tests/'))).toBe(false);
     expect(packedPaths.some((entry) => entry.startsWith('docs/'))).toBe(false);
