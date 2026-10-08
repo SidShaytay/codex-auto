@@ -23,6 +23,12 @@
 - Do not execute unreviewed dependency lifecycle scripts. Inspect package scripts and lockfile changes before installation; explain any required native build step.
 - Security findings must include evidence, affected scope, prerequisites, impact, and a practical recommendation. Separate confirmed defects from conditional risks and unverified concerns.
 
+## Versions and changelog
+
+- Follow Semantic Versioning: patch for compatible fixes, minor for compatible features, major for incompatible changes. Before 1.0, use a minor bump for incompatible behavior and a patch for compatible fixes; document the change clearly.
+- Update `package.json` and root package entries in `package-lock.json` together. Record user-visible changes and migration notes in `CHANGELOG.md`; keep build commit hashes as metadata rather than changing the base version.
+- Version changes do not authorize publishing, release tags, or npm releases. Keep README usage current and changelog history separate.
+
 ## Verification
 
 - Run checks appropriate to the change. For runtime changes, use `npm run build` and `npm test`, plus focused tests as needed.
