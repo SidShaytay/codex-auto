@@ -7,6 +7,22 @@
 - Keep changes focused on the requested outcome. Report unresolved issues and verification limits explicitly.
 - Never publish, push, release, or change live account credentials unless the user authorizes that action.
 
+## Learning from corrections
+
+- Treat user corrections and confirmed incidents as inputs to durable improvement. Record the specific lesson in the relevant repository guidance, regression checklist, or task record before handing off; do not rely on conversational memory alone.
+- Turn a confirmed defect into a regression test where practical. Establish that the test fails with the previous implementation and passes with the proposed change.
+- Keep lessons scoped to the evidence. Distinguish confirmed causes, hypotheses, mitigations, and missing verification; revise earlier claims when new evidence changes the conclusion.
+- Do not describe a longer timeout as a complete race-condition fix. Prefer explicit state, causal events, or structured protocol evidence. If a timing workaround is necessary, document its assumptions, remaining failure modes, and the task for replacing it.
+
+## Development workflow and handoff
+
+- Carry authorized development work through implementation, review of the diff, appropriate verification, documentation, task checkpoints, and Git handoff. Do not end at diagnosis or local installation when required steps remain executable.
+- Commit focused changes as the standard handoff. When the user has authorized pushing, that authorization persists within the task: commit and push before handing off without asking again. Without push authorization, commit locally and report the unpublished state. Commit and push do not authorize releases, tags, or package publication.
+- Before committing, inspect the staged diff for unrelated edits, secrets, generated artifacts, and temporary reports. Preserve user changes; include separately requested edits in their own commit where useful. Never stage `ISSUE.report.md`.
+- Record failing checks and incomplete acceptance explicitly. A checkpoint commit may preserve a tested mitigation with known limits, but does not make its task complete or its checks pass.
+- After pushing, verify the remote branch matches the intended commit and inspect repository status. Report remaining changes explicitly; do not silently leave requested work uncommitted.
+- When a locally installed build embeds Git provenance, rebuild and reinstall after the final source commit, verify its version outside the checkout, and confirm the installed revision reflects the committed source. Keep existing live sessions running unless the user requests a restart.
+
 ## User documentation
 
 - Whenever a change adds, removes, or alters user-visible behavior, commands, runtime requirements, or usage, update `README.md` and its maintained Chinese translation `README.zh-CN.md` together.

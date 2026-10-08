@@ -44,3 +44,10 @@ S15 installation checkpoint:0fcf9ff and19a7e37 pushed; installed clean0.3.0 sour
 ## 2026-10-08 — README introduction
 
 Preserved user-authored English introduction and translated it into Chinese. Checked README local links, code fences and whitespace. Documentation-only; existing114/115 runtime result and pending terminal acceptance unchanged. User requested commit/push and clean source reinstall before personal testing.
+
+S17 October 8 checkpoint: diagnosed historical quota replay false positive with safe timing/prompt-count probe in user-authorized Zellij. Added cursor-position prompt boundaries and five-second interactive startup grace; fake regression fails before/pass after. Built and installed0.3.1; live original resume retained available account, user confirmed status and analytics identity. Bash116/117 (existing S16 failure); broader terminal checks and fish subprocess-stop investigation remain. No publish/commit/push; unrelated metadata preserved.
+S17 additional real Zellij fixture checks: genuine rotation and delayed replay return exit0; same/different working-directory runs retain own fake session IDs; Unicode shell input works after exit; Ctrl-C returns130. Extra test tab closed. Full real Codex narrow/concurrent UI and IME composition acceptance remain.
+
+## S18 — Durable learning and Git handoff
+
+User explicitly requested commit/push and rules for learning from corrections and development best practices. Added repository-scoped AGENTS.md instructions, corrected README translations/changelog to describe five-second startup grace as a mitigation with residual replay risk, and committed runtime0.3.1 in27a36c9. Preserved pending user-authored fork metadata; ISSUE.report.md excluded. Existing116/117 Bash result and real terminal verification limits remain explicit. Next: push verification and committed-source reinstall.

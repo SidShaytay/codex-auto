@@ -3,34 +3,27 @@
 ## Context
 
 - Workspace: `/var/mnt/data/projects/personal/codex-auto`, branch `main`, origin `git@github.com:SidShaytay/codex-auto.git`.
-- Objective: Security review, English documentation plus Chinese README, source installation, stale-account recovery investigation, automatic safe diagnostics, separate commits and push.
-- Authority: User authorized installation, delegation, bug work, commit/push. Respond in English. Credential switching stays local. Never stage `ISSUE.report.md`; user says it is temporary. Do not inspect real credentials or kill unrelated Codex processes.
+- Objective: maintain the fork, diagnose account recovery, install verified snapshots, and complete authorized Git handoffs.
+- Authority: user authorized bug work, installation, live Zellij diagnosis/driving, and commit/push. No release, credential rotation, or unrelated process kills. Never stage temporary `ISSUE.report.md`. Preserve user edits. Respond in English.
 - Resume: See TASKS.md and continue.
-- Owner/writer: root. History: TASKS.log. Next ID:17.
+- Owner/writer: root. History: TASKS.log. Next ID:19.
 
-## Delivered
+## Verified state
 
-- Translation/guidance88950b3; review0076f0b; flag explanation62d3c9a; launch-policy patchc027439; executable buildbc80420; snapshot installere0214a1; automatic diagnostics986bec9. Prior changes pushed through267f7da.
-- `npm run install:local` installs a snapshot from this checkout. System command resolves `/var/home/sid/.local/npm/lib/node_modules/codex-auto/dist/index.js`, version0.3.0 with embedded Git revision. Re-run install:local after edits; builds alone do not update the installed copy.
-- Launch settings now survive quota resume; six fake-account regressions pass. Missing flags are confirmed; entire stale-daemon/auth issue is not proven resolved.
-- Diagnostic context recorded from launch, reports automatically generated on quota/recovery/abnormal exits under `<CODEX_AUTO_HOME>/diagnostics/`. Default30-day expiry, env CODEX_AUTO_DIAGNOSTICS_RETENTION_DAYS=7/30/custom,20 unpinned cap. `diagnostics --keep latest`/`--release latest` control preservation. Cleanup on startup/collection; no background service. Optional CODEX_AUTO_DEBUG=1 prints safe event details. Exports omit credentials/config/env contents/prompts/transcripts/paths/raw session IDs; account/run aliases and build hash included.
-
-## Pending verification
-
-- [!] S07 — Need: real terminal acceptance of account recovery, particularly scenario12 in docs/testing/real-terminal-regression.md. No graphical terminal application access in this shell tool. Next: start installed fork with user's flags, reproduce quota switch, compare /usage and /status; cover required terminal scenarios. Do not claim the reported incident fully fixed yet.
-- [!] S11 — Need: real terminal acceptance of diagnostic display/input in scenario13. Code, privacy,retention,trigger and installed fake-account checks passed. Next: verify automatic report notice and optional debug lines preserve terminal redraw/input.
-
-Build passed. Latest full suite114/115; existing missing-session stderr assertion still fails at tests/session/session.test.ts:1054. Focused diagnostics/CLI41 and logger3 pass. No full supply-chain/native/external-Codex audit. Markdown checks pass. ISSUE.report.md untracked and excluded. Push uses per-command HTTPS gh credential helper because SSH agent unavailable; remote unchanged. GPG prompt unavailable, commits unsigned without changing signing config.
-
-## Completed follow-up
-
-- [x] S12 — Add build-time Git commit/dirty provenance to version output and diagnostics. Root owns all edits. Implemented in cc00a14. Build and focused CLI/diagnostics/package checks passed, including archive fallback and packed metadata. Reinstalled clean source snapshot; both version commands verified outside the checkout. Version embeds the build-time HEAD; .dirty indicates tracked modifications. Installed clean build and commits pushed. Untracked ISSUE.report.md excluded from dirty detection and commits.
-
-- [x] S13 — Root: AGENTS.md now requires TASKS.md for all code changes, bug fixes, and features, before code edits and through verification/commit/handoff. Checked required language and preserved simple resume instruction. Documentation-only; no runtime change.
+- Delivered: local snapshot installer, build Git provenance, launch-policy preservation, enforced/deduplicated `--no-daemon`, incompatible remote/server rejection, safe automatic diagnostic reports, mirrored READMEs and changelog. Historical commits/checks are in TASKS.log.
+- Runtime0.3.1 mitigation committed in27a36c9; user's pending fork package metadata preserved. Cursor-position boundaries survive ANSI cleanup; interactive pre-prompt quota check waits five seconds. This is a timing mitigation, not causal replay classification; slow replay may still be misclassified.
+- Probe confirmed historical quota replay had no recognized prompt and triggered the former150ms check. Fake PTY regression fails before/pass after. Build passed; Bash full suite116/117, only existing S16 failure. Default fish suite also encounters subprocess-stop timeouts; focused replay regression passes with fish.
+- Live original Ghostty → Zellij resume remained open; user confirmed available quota and correct account in status/analytics. Separate fake panes verified rotation/replay, own-session binding in same/different working directories, Unicode shell input after exit, and Ctrl-C exit130. Narrow fixed-coordinate fixture cannot validate full Codex redraw quality. Test tab closed; original session left open with goal paused on analytics.
+- Installed0.3.1 currently embeds the pre-commit dirty revision; rebuild/reinstall after final commit. Snapshot install does not restart live sessions. Push uses per-command HTTPS gh credential helper; remote unchanged. Prior signing prompt unavailable; commits unsigned without global config changes.
 
 ## Current work
 
-- [!] S14 — Root: enforce --no-daemon on managed interactive launch/resume, deduplicate it, reject --remote/--remote-auth-token-env and server-management commands before credential import or launch. Preserve literal prompt/option values and non-interactive commands. Implementation and automated checks done: build passed, full suite114/115; only pre-existing missing-session warning failure remains. Fake-account tests cover implicit flag on launch/rotation, deduplication, literals, rejection before account import and exec passthrough. Scenario12 updated. Need: real terminal acceptance. Next: run scenario12 without manually supplying --no-daemon, verify /usage and /status after switching and rejection behavior.
-- [x] S15 — Root: bump 0.2.8 to 0.3.0; add changelog and concise SemVer guidance. Update both READMEs with enforced mode and deferred desktop/daemon compatibility. Preserve user README wording. Version/lockfile consistency, README local links and fences, changelog packaging checked. No npm release or live credential actions. Implementation0fcf9ff and guidance19a7e37 pushed. Source snapshot reinstalled; clean0.3.0 version and all incompatible-option rejections verified outside checkout with temporary empty app home.
+- [-] S18 — Root: user requests standard commit/push handoff and durable learning/development rules. Added AGENTS.md rules for recording corrections, regressions, causal evidence, honest mitigation claims, verification, staged review, authorized commit/push, remote checks, and committed-source reinstall. Both READMEs/changelog explicitly document the five-second limitation. Scope: guidance, task records, committed patch handoff. Verification: staged diff/privacy review, whitespace, README local links/fences, version consistency passed; runtime evidence above. Next: commit rules/records, push and verify remote, checkpoint completion, then clean source reinstall and verify version outside checkout.
 
-- [ ] S16 — Root: investigate the pre-existing missing-session recovery warning failure separately. Next: trace output capture and missing-session detection using fake credentials; fix without weakening the safe-resume assertion. Build/full suite and real terminal regression required for session changes.
+## Pending follow-up
+
+- [!] S17 — Root: replace timing mitigation with causal/event-based quota classification and finish real IME/narrow/concurrent Codex UI acceptance. Original reproduction passes; full fix and checklist completion are not established. Next: inspect structured current-invocation/turn evidence and design a regression exceeding the grace period; keep credentials/transcripts out of artifacts.
+- [ ] S16 — Root: investigate existing missing-session recovery warning failure without weakening the safe-resume assertion. Next: trace fake invocation output and condition gating; build/full suite and real terminal regression required for runtime edits.
+- [!] S07/S14 — Account recovery/daemon-policy acceptance partially covered by S17; broader scenario12 remains pending.
+- [!] S11 — Diagnostic display/input scenario13 acceptance remains pending; automated privacy/retention/trigger checks passed.
+- [ ] Fish subprocess-stop/timeouts: investigate separately with fake credentials before claiming a clean default-shell full suite.
