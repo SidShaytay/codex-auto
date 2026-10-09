@@ -37,6 +37,28 @@ describe('session evidence', () => {
     } finally { await cleanupTempDir(appHome); }
   });
 
+  test('records selection reasons locally and exports only allowlisted snapshot aliases in debug output', async () => {
+    const appHome = await createTempAppHome();
+    const debugOutput = new PassThrough();
+    try {
+      const logger = await createSessionLogger(appHome, { debugOutput });
+      const time = '2026-10-09T06:34:16.000Z';
+      await logger.log('quota_switch', { selection: {
+        checkedAt: time, source: 'local_quota_observations', liveQuotaRefreshed: false, config: 'private-config',
+        accounts: [{ account: 'private-account', eligibility: 'reset_elapsed', quotaObservedAt: time,
+          retryAt: time, displayText: 'private-text', token: '«SECRET SECRET_QUOTED_SECRET_ASSIGNMENT_5 redacted — the real value is live in your shell env; read it in bash as "$SECRET_QUOTED_SECRET_ASSIGNMENT_5"»' }]
+      } });
+      const local = JSON.parse((await readFile(logger.path, 'utf8')).trim());
+      expect(local.selection.accounts[0].account).toBe('private-account');
+      const output = debugOutput.read().toString();
+      expect(output).not.toContain('private-');
+      expect(JSON.parse(output.slice(output.indexOf('{'))).selection).toEqual({
+        checkedAt: time, source: 'local_quota_observations', liveQuotaRefreshed: false, capped: false,
+        accounts: [{ account: 'account-1', eligibility: 'reset_elapsed', quotaObservedAt: time, retryAt: time }]
+      });
+    } finally { await cleanupTempDir(appHome); }
+  });
+
   test('automatically captures incident events and tolerates capture failure', async () => {
     const appHome = await createTempAppHome();
     const reasons: string[] = [];

@@ -20,6 +20,7 @@ Ask what should have happened and classify the observed failure:
 | Quota visible, no invocation end or switch | Freshness, prompt-redraw classification, session binding, detector transport |
 | Quota detected, child does not stop | PTY shutdown and process lifecycle; test the real launch shell |
 | Switch recorded, resumed launch missing | Rotation selection, exhausted set, safe binding and recovery errors |
+| All exhausted after a long run, earlier account now available | Age of each exhaustion mark, reset evidence, and whether selection expires those marks |
 | Resumed launch recorded, fresh quota on second account | Effective credential/provider identity and real availability; do not call it a missed switch |
 | Only old quota visible after recovery | Historical replay; never infer current exhaustion from the viewport alone |
 | Pane has returned to shell | Inspect completed invocation timeline before assuming a live stalled wrapper |
@@ -125,3 +126,15 @@ Correct earlier claims explicitly. Keep this guide concise; move execution detai
 **Lesson:** separate detector, rotation, and effective-identity failures. A fresh second-account error does not prove the intended account was used. Keep the local incident checkpoint neutral; do not add speculative runtime changes. Current user instruction prohibits all Zellij access because it is doing real work.
 
 **Next trigger:** on recurrence, obtain current permission, preserve the pane and build a new invocation timeline before input/restart. Compare identity/availability only if the timeline proves rotation occurred.
+
+## 2026-10-09 UTC — Run-lifetime exclusion skips recovered capacity
+
+**Confirmed:** the supplied incident reports at06:34:16 UTC identify build5ccc0ca, version0.3.2. Allowlisted metadata from the matching completed wrapper log shows that the account the user expected to recover was marked exhausted at04:47:50 UTC. The wrapper switched twice, ran the final account for about106 minutes, then reported all exhausted without retrying the earlier account. No live terminal, credentials, configuration or Codex transcripts were accessed.
+
+**Cause of the skipped retry:** `runManagedSession` keeps an `exhausted` set for the entire run and never removes entries. `pickNextAccount` excludes every member without considering elapsed time or `retryAvailabilityByAccount`. Expiration of displayed retry metadata in state does not clear this independent set. An isolated source selection probe confirms that the retained mark blocks selection and removing it makes the account eligible.
+
+**Limits:** restored capacity is user-reported. The exact provider reset time, effective identity and authenticity of the original quota detection remain unverified. This establishes why the wrapper skipped the account, not why it originally hit quota. The initial diagnostic checkpoint made no runtime change. The subsequent local0.3.3 patch addresses supported reset-time expiry; it does not add provider capacity refresh or verify this account's actual reset.
+
+**Delivered locally / verification:** per-run observations retain supported retry timestamps independently of state normalization. Selection releases elapsed cooldowns, reloads account order, and blocks missing, invalid or non-future reset evidence rather than looping. Each switch and stop records candidate eligibility, observation/reset timestamps and `liveQuotaRefreshed: false`; exports anonymize identifiers. Six fake-clock managed-session regressions fail on the old implementation and pass on the patch, including Bash pipes, Bash/Fish PTYs and repeated quota with stale reset evidence. The build passes; the final full Bash suite is145/146 with the pre-existing missing-session warning assertion still failing. A default Fish run also times out in two pipe-lifecycle cases; both failures reproduce against the unmodified Git baseline. Final results belong in TASKS.md. No real terminal regression, live identity/availability inspection or installation has occurred.
+
+**Lesson / next verification:** the old “all exhausted” status meant every configured account had failed at some point during the run, not that all were unavailable now. Log decision-time eligibility and the source/freshness of capacity evidence. Do not describe local reset eligibility as live provider quota. Terminal acceptance and a verified provider-quota interface remain separate follow-ups; unknown-reset accounts still require a new managed run.

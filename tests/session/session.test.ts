@@ -2,7 +2,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { PassThrough, Writable } from 'node:stream';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { instancesRoot } from '../../src/lib/paths.js';
 import { enforceManagedServerPolicy, runManagedSession } from '../../src/lib/session.js';
 import { loadState } from '../../src/lib/state.js';
@@ -80,6 +80,81 @@ class TtyInputStream extends PassThrough {
 }
 
 describe('managed session runner', () => {
+  test.each([
+    { repeatQuota: false, interactive: false, shell: '/bin/bash' },
+    { repeatQuota: true, interactive: false, shell: '/bin/bash' },
+    { repeatQuota: false, interactive: true, shell: '/bin/bash' },
+    { repeatQuota: true, interactive: true, shell: '/bin/bash' },
+    ...(existsSync('/usr/bin/fish') ? [
+      { repeatQuota: false, interactive: true, shell: '/usr/bin/fish' },
+      { repeatQuota: true, interactive: true, shell: '/usr/bin/fish' }
+    ] : [])
+  ])('rechecks a reset account after a long invocation without looping on stale reset evidence: $repeatQuota/$interactive/$shell', async ({ repeatQuota, interactive, shell }) => {
+    const appHome = await createTempAppHome();
+    const codexHome = await createTempAppHome('codex-home-');
+    const start = Date.now();
+    let now = start;
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    class ClockCapture extends TtyCaptureStream {
+      private clockOutput = '';
+      override _write(chunk: Buffer | string, encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+        this.clockOutput = `${this.clockOutput}${chunk.toString()}`.slice(-1000);
+        if (this.clockOutput.includes('advance-clock')) now = start + 20 * 60_000;
+        super._write(chunk, encoding, callback);
+      }
+    }
+    const stdout = new ClockCapture();
+    try {
+      await seedCodexHome(codexHome);
+      await seedState(appHome, {
+        version: 1, accounts: ['a', 'b'], currentIndex: 0, preferredAccountName: 'a',
+        lastSuccessfulAccount: null, lastSessionId: null, updatedAt: new Date(start).toISOString()
+      });
+      await seedAccount(appHome, 'a', { account: 'a', token: 'dummy-a' });
+      await seedAccount(appHome, 'b', { account: 'b', token: 'dummy-b' });
+      const fixturePath = path.join(appHome, 'reset-codex.mjs');
+      await writeFile(fixturePath, `
+import { appendFileSync, readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
+const account = JSON.parse(readFileSync(path.join(process.env.CODEX_HOME, 'auth.json'), 'utf8')).account;
+const previous = existsSync(process.env.FAKE_CODEX_LOG) ? readFileSync(process.env.FAKE_CODEX_LOG, 'utf8').trim().split('\\n') : [];
+appendFileSync(process.env.FAKE_CODEX_LOG, account + '\\n');
+if (account === 'a' && previous.includes('a') && process.env.FAKE_REPEAT_QUOTA !== '1') {
+  console.log('recovered account resumed');
+  process.exit(0);
+}
+if (account === 'b') console.log('advance-clock');
+const reset = account === 'a' ? process.env.FAKE_RESET_A : process.env.FAKE_RESET_B;
+console.log("You've hit your usage limit. To get more access now, send a request to your admin.\\nor try again at " + reset + '.');
+process.exit(1);
+`);
+      const result = await runManagedSession({
+        appHome, codexHome, workspaceDir: process.cwd(), extraArgs: ['resume', 'reset-session'],
+        codexCommand: `node ${fixturePath}`, interactive, stdout, stderr: new PassThrough(),
+        stdin: new TtyInputStream() as TtyInputStream & NodeJS.ReadStream,
+        env: { ...process.env, SHELL: shell, FAKE_CODEX_LOG: path.join(appHome, 'invocations'),
+          FAKE_RESET_A: new Date(start + 10 * 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+          FAKE_RESET_B: new Date(start + 60 * 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+          FAKE_REPEAT_QUOTA: repeatQuota ? '1' : '0' }
+      });
+      expect(result).toMatchObject({ switchCount: 2, finalAccount: 'a', exhaustedAll: repeatQuota, exitCode: repeatQuota ? 1 : 0 });
+      expect((await readFile(path.join(appHome, 'invocations'), 'utf8')).trim().split('\n')).toEqual(['a', 'b', 'a']);
+      const logName = (await readdir(path.join(appHome, 'logs'))).find((name) => name.startsWith('session-'))!;
+      const switches = (await readFile(path.join(appHome, 'logs', logName), 'utf8')).trim().split('\n')
+        .map((line) => JSON.parse(line)).filter((event) => event.event === 'quota_switch');
+      expect(switches[1].selection).toMatchObject({
+        liveQuotaRefreshed: false, source: 'local_quota_observations',
+        accounts: [{ account: 'a', eligibility: 'reset_elapsed' }, { account: 'b', eligibility: 'cooldown' }]
+      });
+      if (repeatQuota) expect(switches[2].selection.accounts[0].eligibility).toBe('reset_unusable');
+      // Expired state hints must not erase the per-run evidence needed to retry.
+      expect((await loadState(appHome)).retryAvailabilityByAccount.a).toBeUndefined();
+    } finally {
+      clock.mockRestore();
+      await cleanupTempDir(appHome);
+      await cleanupTempDir(codexHome);
+    }
+  });
   test.each(['--remote', '--remote=unix:///tmp/server', '--remote-auth-token-env', '--remote-auth-token-env=TOKEN', 'agents', 'app-server', 'remote-control'])(
     'rejects incompatible server option %s before launching', async (arg) => {
       await expect(runManagedSession({ appHome: '/unused', workspaceDir: '/unused', extraArgs: [arg] }))
@@ -1483,7 +1558,7 @@ process.exit(0);
       });
 
       expect(result.exhaustedAll).toBe(false);
-      expect(stderr.text()).not.toContain('All configured accounts are exhausted');
+      expect(stderr.text()).not.toContain('No eligible account');
       expect(stderr.text()).not.toContain('and resuming');
       expect(stdout.text()).toContain('\u001b[?2004l');
       expect(stdout.text()).toContain('\u001b[>4;0m');

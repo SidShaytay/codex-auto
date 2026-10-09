@@ -2,6 +2,7 @@ import { appendFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Writable } from 'node:stream';
 import { ensureDir } from './fs.js';
+import { sanitizeRotationSelection } from './diagnostics.js';
 import { logsRoot } from './paths.js';
 
 export type SessionLogger = {
@@ -50,6 +51,14 @@ export async function createSessionLogger(
         if (typeof details.exitCode === 'number' && Number.isFinite(details.exitCode)) safe.exitCode = details.exitCode;
         if (typeof details.outputCharacters === 'number' && Number.isSafeInteger(details.outputCharacters) && details.outputCharacters >= 0) safe.outputCharacters = details.outputCharacters;
         if (Array.isArray(details.exhausted)) safe.exhaustedCount = details.exhausted.length;
+        // Debug aliases are scoped to this selection snapshot; reports share aliases across events.
+        const aliases = new Map<string, string>();
+        const selection = sanitizeRotationSelection(details.selection, (value) => {
+          if (typeof value !== 'string' || value.length === 0 || value.length > 1024) return null;
+          if (!aliases.has(value)) aliases.set(value, `account-${aliases.size + 1}`);
+          return aliases.get(value)!;
+        });
+        if (selection) safe.selection = selection;
         const policy = details.policy as Record<string, unknown> | undefined;
         if (policy && typeof policy === 'object') {
           const safePolicy: Record<string, unknown> = {};

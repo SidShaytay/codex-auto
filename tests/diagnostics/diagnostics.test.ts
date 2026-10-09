@@ -33,7 +33,14 @@ async function seedSensitiveRecords(appHome: string): Promise<void> {
         config: 'SECRET-CONFIG', profile: 'SECRET-PROFILE', model: 'SECRET-MODEL'
       }
     }),
-    JSON.stringify({ time, event: 'quota_switch', from: 'SECRET-ACCOUNT', to: 'SECRET-OTHER', exhausted: ['SECRET-ACCOUNT'] }),
+    JSON.stringify({ time, event: 'quota_switch', from: 'SECRET-ACCOUNT', to: 'SECRET-OTHER', exhausted: ['SECRET-ACCOUNT'],
+      selection: { checkedAt: time, source: 'local_quota_observations', liveQuotaRefreshed: false, token: '«SECRET SECRET_QUOTED_SECRET_ASSIGNMENT_4 redacted — the real value is live in your shell env; read it in bash as "$SECRET_QUOTED_SECRET_ASSIGNMENT_4"»',
+        accounts: [
+          { account: 'SECRET-ACCOUNT', eligibility: 'cooldown', quotaObservedAt: time, retryAt: '2026-10-09T01:00:00.000Z', displayText: 'SECRET-TEXT' },
+          { account: 'SECRET-OTHER', eligibility: 'untried', quotaObservedAt: null, retryAt: null },
+          { account: 'SECRET-INVALID', eligibility: 'SECRET-STATUS', retryAt: 'SECRET-TIME' }
+        ] }
+    }),
     JSON.stringify({ time: 'SECRET-TIME', event: 'exit', exitCode: 'SECRET-EXIT', account: 'SECRET-OTHER' }),
     JSON.stringify({ time, event: 'SECRET-EVENT', token: 'SECRET-TOKEN' })
   ].join('\n') + '\n');
@@ -64,13 +71,37 @@ describe('shareable diagnostics', () => {
         noDaemon: true, sandbox: 'read-only', approval: 'on-request', configOverrides: 2,
         hasProfile: true, hasModelOverride: false, remote: false
       });
-      expect(rotation).toMatchObject({ from: launch.account, exhaustedCount: 1 });
+      expect(rotation).toMatchObject({ from: launch.account, exhaustedCount: 1,
+        selection: { checkedAt: time, source: 'local_quota_observations', liveQuotaRefreshed: false, capped: false,
+          accounts: [
+            { account: launch.account, eligibility: 'cooldown', quotaObservedAt: time, retryAt: '2026-10-09T01:00:00.000Z' },
+            { account: rotation.to, eligibility: 'untried', quotaObservedAt: null, retryAt: null }
+          ] }
+      });
       expect(report.runs).toEqual([{
         run: 'run-1', status: 'recovery_failed', startedAt: time, updatedAt: time,
         account: rotation.to, sessionBound: true, sessionBindingLost: true
       }]);
       expect(events.find((entry) => entry.event === 'exit')).toMatchObject({ time: null });
       expect(events.find((entry) => entry.event === 'exit')).not.toHaveProperty('exitCode');
+    } finally { await cleanupTempDir(appHome); }
+  });
+
+  test('bounds selection snapshots and removes invalid reset strings and unknown fields', async () => {
+    const appHome = await createTempAppHome();
+    try {
+      await mkdir(path.join(appHome, 'logs'));
+      await writeFile(path.join(appHome, 'logs', 'session-1791486000000.log'), JSON.stringify({
+        time, event: 'all_exhausted', selection: { checkedAt: 'SECRET-TIME', source: 'local_quota_observations', liveQuotaRefreshed: false,
+          accounts: Array.from({ length: 80 }, (_, i) => ({ account: `SECRET-${i}`, eligibility: 'reset_unknown',
+            quotaObservedAt: 'SECRET-OBSERVED', retryAt: 'SECRET-RESET', credentials: 'SECRET-AUTH' })) }
+      }));
+      const report = await collectDiagnostics({ appHome, packageVersion: '0.3.3' });
+      const selection = (report.events as Record<string, any>[])[0].selection;
+      expect(selection).toMatchObject({ checkedAt: null, capped: true });
+      expect(selection.accounts).toHaveLength(64);
+      expect(selection.accounts[0]).toMatchObject({ quotaObservedAt: null, retryAt: null });
+      expect(JSON.stringify(report)).not.toContain('SECRET');
     } finally { await cleanupTempDir(appHome); }
   });
 

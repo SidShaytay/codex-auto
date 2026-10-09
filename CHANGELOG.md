@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.3
+
+### Fixed
+
+- Previously quota-limited accounts become eligible again after a supported recorded retry time passes during the same managed run. New quota errors replace prior reset evidence; missing, invalid or non-future reset times remain excluded to prevent immediate retry loops. Selection uses the latest configured account order.
+
+### Added
+
+- Switch and no-eligible-account diagnostics record the considered accounts, quota-observation/reset timestamps, eligibility reasons, and whether live quota was refreshed. Exported reports and debug output anonymize accounts and bound snapshot size. The stop message distinguishes local eligibility from actual provider capacity; no live provider usage query is added.
+
+No credential migration is required. Running wrappers must be exited and resumed to load this build when convenient; installation does not update an existing process. Automated reset-crossing regression passes, but real terminal regression remains pending.
+
 ## 0.3.2
 
 ### Fixed

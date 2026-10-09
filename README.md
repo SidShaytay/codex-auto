@@ -266,12 +266,12 @@ This wrapper adds the flag by default for interactive launches and automatic rec
 
 ## Account Switching & Session Recovery
 
-The current version only triggers a switch when a genuine rate-limit message is detected, avoiding false positives from warning-like output.
+The wrapper switches when it recognizes a quota error. Advisory rate-limit warnings do not trigger switching.
 
 When a rate limit is hit:
 
-1. Mark the current account as exhausted
-2. Switch to the next available account
+1. Record the current account's quota error and retry time, if Codex supplies one
+2. Recheck eligibility in the current local account order and switch to the next eligible account
 3. Replace the current run overlay's `auth.json` with the next account
 4. Resume only the session ID already bound to that managed run
 5. Run:
@@ -279,6 +279,8 @@ When a rate limit is hit:
 ```bash
 codex resume --no-daemon --no-alt-screen <session-id> Continue
 ```
+
+An earlier account becomes eligible again once its recorded retry time passes, even during a long managed run. A fresh quota error replaces that account's previous reset evidence. Missing, invalid, or already-past retry times keep that account excluded for the rest of this run to avoid immediate retry loops. Retry-time parsing uses the local timezone when Codex omits one. Eligibility is not a live capacity check: the wrapper does not query provider usage percentages or guarantee that an eligible account has capacity.
 
 Recovery preserves explicitly supplied approval, sandbox, configuration, profile, model, and provider settings. For example, when you start with:
 
@@ -435,7 +437,7 @@ Use `env CODEX_AUTO_UPDATE_CHECK=0 codex-auto ...` to disable upstream update pr
 
 The wrapper records launch and recovery context from the start of each run. A quota switch, exhausted-account stop, recovery failure, or abnormal exit automatically saves a sanitized report and prints its location. No debug flag or post-incident command is required.
 
-Reports live in `~/.codex-auto/diagnostics/` (or `<CODEX_AUTO_HOME>/diagnostics/`). They include wrapper/build identity, recent events, session-binding state, and explicit launch-policy summaries. Account/run identifiers are anonymized. Reports exclude credentials, configuration contents, environment values, prompts, transcripts, workspace paths, and raw session IDs. They do not capture the external Codex daemon's internal state or network traffic.
+Reports live in `~/.codex-auto/diagnostics/` (or `<CODEX_AUTO_HOME>/diagnostics/`). They include wrapper/build identity, recent events, session-binding state, and explicit launch-policy summaries. Each switch and no-eligible-account stop includes the considered account list, the last quota-observation and retry timestamps, and an eligibility reason (`untried`, `cooldown`, `reset_elapsed`, `reset_unknown`, or `reset_unusable`). The snapshot explicitly records `liveQuotaRefreshed: false`; it describes local observations, not live provider usage. Exported snapshots are capped at 64 accounts and mark truncation. Account/run identifiers are anonymized. Reports exclude credentials, configuration contents, environment values, prompts, transcripts, workspace paths, and raw session IDs. They do not capture the external Codex daemon's internal state or network traffic.
 
 Attach the generated `incident-*.json` file when reporting a problem. You can also export current sanitized context:
 
@@ -472,13 +474,13 @@ A hard kill or power loss cannot trigger a final report; the already recorded ev
 - **Codex executable not found:** ensure `codex` is on `PATH`, or set `CODEX_AUTO_CODEX_BIN` to its executable path.
 - **Recovery cannot confirm a session:** use Codex's session picker to select the intended session. Automatic recovery stops when it cannot safely identify that session.
 - **Quota error stays on screen without switching:** for an interactive run with a bound session ID, Codex's fresh structured `usage_limit_exceeded` event triggers rotation even when a prompt redraw hides the error from screen-text detection. Existing records and other threads do not trigger this event path. Codex versions that omit this event, sessions not yet bound, and the direct transport still lack this protection. Updating or reinstalling does not update running wrappers; exit and resume with the new build when convenient.
-- **All accounts exhausted:** check `codex-auto list` for recorded retry times and confirm current availability in Codex. Interactive startup allows five seconds for history replay before acting on quota text without a recognized prompt; old messages before the latest prompt do not exhaust the resumed account. This timing safeguard can still misclassify replay that takes longer than five seconds.
+- **No eligible account:** inspect the incident's selection snapshot and check `codex-auto list` for recorded retry times. Confirm identity and current availability in Codex; this stop does not establish that every provider account is out of capacity. Accounts with supported elapsed retry times can be selected again in the same run. Accounts without usable reset evidence require a new managed run to retry. Interactive startup allows five seconds for history replay before acting on quota text without a recognized prompt; old messages before the latest prompt do not exhaust the resumed account. This timing safeguard can still misclassify replay that takes longer than five seconds.
 
 ## Known Limitations
 
-- Rate-limit detection relies on known failure messages in terminal output, not official structured events
+- Bound interactive sessions recognize fresh structured quota errors; other detection paths still rely on known terminal messages and retain historical-replay risks
 - If the underlying `codex` session ID has been lost, `codex-auto` stops automatic recovery instead of falling back to `resume --last`
-- Account rotation is based on local state order, with no weighting, priority, or health checks
+- Account rotation uses local account order and observed reset times, with no weighting, priority, live usage refresh, or provider identity verification
 
 ## Reference
 

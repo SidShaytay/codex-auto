@@ -12,7 +12,7 @@ import { markAccountUsed } from './accounts.js';
 import { readTextIfExists } from './fs.js';
 import { createQuotaEventReader } from './quota-events.js';
 import { accountAuthPath, instanceHome, resolveCodexHome } from './paths.js';
-import { getAccountByName, getCurrentAccount, getPreferredAccount, pickNextAccount } from './rotation.js';
+import { decideAccountRotation, getAccountByName, getCurrentAccount, getPreferredAccount, type QuotaObservation } from './rotation.js';
 import { writeManagedRunState } from './run-state.js';
 import { ensureAppLayout, cleanupInstanceOverlay, createInstanceOverlay, replaceOverlayAuth } from './runtime.js';
 import { loadState, saveState, type RetryAvailability } from './state.js';
@@ -1189,7 +1189,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
     throw new Error(`Account "${options.preferredAccountName}" does not exist.`);
   }
 
-  const exhausted = new Set<string>();
+  const quotaObservations = new Map<string, QuotaObservation>();
   let firstRun = true;
   let lastSessionId: string | null = null;
   const instanceId = buildInstanceId();
@@ -1287,6 +1287,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
             policyArgs: resumePolicyArgs
           });
 
+      const quotaObservedAt = result.quotaError ? new Date(Date.now()).toISOString() : null;
       await logger.log('invocation_end', {
         account: current.name,
         instanceId,
@@ -1294,7 +1295,9 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
         quotaDetected: result.quotaError,
         missingSessionError: hasMissingSessionError(result.output),
         interrupted: result.interrupted,
-        outputCharacters: result.output.length
+        outputCharacters: result.output.length,
+        retryAt: result.retryAvailability?.availableAt ?? null,
+        quotaObservedAt
       });
 
       const discoveredSessionId: string | null = firstRun && !lastSessionId
@@ -1408,16 +1411,23 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
         };
       }
 
-      exhausted.add(current.name);
+      quotaObservations.set(current.name, {
+        observedAt: quotaObservedAt!, retryAt: result.retryAvailability?.availableAt ?? null
+      });
       const latestState = await loadState(options.appHome);
       if (result.retryAvailability) {
         latestState.retryAvailabilityByAccount[current.name] = result.retryAvailability;
+      } else {
+        delete latestState.retryAvailabilityByAccount[current.name];
       }
-      const next = pickNextAccount(latestState.accounts, current.index, exhausted);
+      // Account order may change during a long invocation. Resolve the current index anew.
+      const currentIndex = latestState.accounts.indexOf(current.name);
+      const { next, exhausted, selection } = decideAccountRotation(latestState.accounts, currentIndex, quotaObservations);
       await logger.log('quota_switch', {
         from: current.name,
         to: next?.name ?? null,
-        exhausted: [...exhausted],
+        exhausted,
+        selection,
         switchCount: switchCount + (next ? 1 : 0),
         sessionBound: lastSessionId !== null,
         instanceId
@@ -1429,10 +1439,11 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
           latestState.lastSessionId = lastSessionId;
         }
         await saveState(options.appHome, latestState);
-        stderr.write('\n[codex-auto] All configured accounts are exhausted.\n');
+        stderr.write('\n[codex-auto] No eligible account based on recorded quota/reset data (not live capacity).\n');
         await logger.log('all_exhausted', {
           finalAccount: current.name,
-          instanceId
+          instanceId,
+          selection
         });
         await writeManagedRunState(options.appHome, {
           runId,

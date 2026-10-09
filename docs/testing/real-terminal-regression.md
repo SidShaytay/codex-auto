@@ -94,7 +94,8 @@ Use a controllable repository fixture or reproducible account setup to trigger q
 
 Accept when:
 
-- A clear quota message triggers detection and rotation to the next account.
+- A clear quota message triggers detection and rotation to the next eligible account.
+- With fake accounts and an isolated home, make account A report a supported future retry time, let account B run past that time, then exhaust B. Recovery must retry A on the same bound session even after its persisted display hint expires. Repeat with A reporting a new future reset, no reset, and an already-past reset: it must not enter an immediate retry loop. Do not change the system clock or exhaust live accounts to create this scenario.
 - In an explicitly bound resumed session, append a fresh `event_msg` / `task_complete` record with `error.codex_error_info: "usage_limit_exceeded"` and redraw `›` below the quota message in the same output chunk. Rotation must still occur and preserve the session ID. Repeat with pre-existing error records, a newly appended old-timestamp record, and an error in another thread; none must trigger the event path.
 - Verify the running wrapper started after the tested build. Installing a patch does not replace code already loaded by a live wrapper; record its launch time and actual resume ID rather than inferring them from a stale pane title.
 - Recovery resumes the same session.
@@ -184,7 +185,7 @@ Current verification: automated results are recorded in `TASKS.md`; real termina
 
 Required when incident collection, debug output, or diagnostic messages change.
 
-Start with two controllable fixture accounts and the latest installed build. Trigger quota rotation without setting CODEX_AUTO_DEBUG. Confirm an incident JSON file is saved under the configured app home's diagnostics directory and its location is printed without corrupting the terminal input area. Repeat with CODEX_AUTO_DEBUG=1; inspect safe launch policy before and after rotation, then normal exit and shell input. Trigger a controlled recovery failure and verify its report is also generated. Check that no credentials, prompts, transcripts, raw session IDs, or account names appear in exported reports or debug lines.
+Start with two controllable fixture accounts and the latest installed build. Trigger quota rotation without setting CODEX_AUTO_DEBUG. Confirm an incident JSON file is saved under the configured app home's diagnostics directory and its location is printed without corrupting the terminal input area. Inspect the selection snapshot: candidate aliases, eligibility reasons, quota-observation and retry timestamps, and `liveQuotaRefreshed: false` must explain the decision without claiming live capacity. Exhaust all eligible fixture accounts and confirm the stop says eligibility is based on recorded quota/reset data, not live capacity. Repeat with CODEX_AUTO_DEBUG=1; inspect safe launch policy before and after rotation, then normal exit and shell input. Trigger a controlled recovery failure and verify its report is also generated. Check that no credentials, prompts, transcripts, raw session IDs, or account names appear in exported reports or debug lines.
 
 Accept when evidence is recorded from launch without opt-in, incident collection runs automatically, failures to write diagnostics do not block recovery, and redraw/input remain correct. Use `diagnostics --keep latest`, then `--release latest`, and confirm that this does not modify account credentials or conversation history. Privacy/retention are also checked by automated tests; rendered terminal behavior still needs real terminal acceptance.
 

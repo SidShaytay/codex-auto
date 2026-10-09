@@ -5,6 +5,39 @@ export type AccountSelection = {
   index: number;
 };
 
+export type QuotaObservation = { observedAt: string; retryAt: string | null };
+export type AccountEligibility = 'untried' | 'cooldown' | 'reset_elapsed' | 'reset_unknown' | 'reset_unusable';
+export type RotationSelection = {
+  checkedAt: string;
+  source: 'local_quota_observations';
+  liveQuotaRefreshed: false;
+  accounts: { account: string; eligibility: AccountEligibility; quotaObservedAt: string | null; retryAt: string | null }[];
+};
+
+/** Retain reset evidence independently of state, which removes expired display hints. */
+export function decideAccountRotation(
+  accounts: string[], currentIndex: number, observations: Map<string, QuotaObservation>, now = Date.now()
+): { next: AccountSelection | null; exhausted: string[]; selection: RotationSelection } {
+  const candidates = accounts.map((account) => {
+    const observation = observations.get(account);
+    let eligibility: AccountEligibility = 'untried';
+    if (observation) {
+      const retryAt = observation.retryAt === null ? NaN : Date.parse(observation.retryAt);
+      const observedAt = Date.parse(observation.observedAt);
+      eligibility = observation.retryAt === null ? 'reset_unknown'
+        : !Number.isFinite(retryAt) || !Number.isFinite(observedAt) || retryAt <= observedAt ? 'reset_unusable'
+        : retryAt > now ? 'cooldown' : 'reset_elapsed';
+    }
+    return { account, eligibility, quotaObservedAt: observation?.observedAt ?? null, retryAt: observation?.retryAt ?? null };
+  });
+  const exhausted = candidates.filter(({ eligibility }) => !['untried', 'reset_elapsed'].includes(eligibility))
+    .map(({ account }) => account);
+  return {
+    next: pickNextAccount(accounts, currentIndex, new Set(exhausted)), exhausted,
+    selection: { checkedAt: new Date(now).toISOString(), source: 'local_quota_observations', liveQuotaRefreshed: false, accounts: candidates }
+  };
+}
+
 export function getCurrentAccount(state: AppState): AccountSelection | null {
   if (state.accounts.length === 0) {
     return null;

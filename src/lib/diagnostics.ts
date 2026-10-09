@@ -66,6 +66,23 @@ function policy(value: unknown): JsonObject | null {
   return result;
 }
 
+/** Shared allowlist for exported reports and optional debug output. */
+export function sanitizeRotationSelection(value: unknown, accountAlias: (value: unknown) => string | null): JsonObject | null {
+  const source = object(value);
+  if (!source || source.source !== 'local_quota_observations' || source.liveQuotaRefreshed !== false || !Array.isArray(source.accounts)) return null;
+  const accounts: JsonObject[] = [];
+  for (const value of source.accounts.slice(0, 64)) {
+    const candidate = object(value);
+    if (!candidate || !['untried', 'cooldown', 'reset_elapsed', 'reset_unknown', 'reset_unusable'].includes(candidate.eligibility as string)) continue;
+    const account = accountAlias(candidate.account);
+    if (account === null) continue;
+    accounts.push({ account, eligibility: candidate.eligibility,
+      quotaObservedAt: timestamp(candidate.quotaObservedAt), retryAt: timestamp(candidate.retryAt) });
+  }
+  return { checkedAt: timestamp(source.checkedAt), source: 'local_quota_observations', liveQuotaRefreshed: false,
+    accounts, capped: source.accounts.length > 64 };
+}
+
 async function recentFiles(directory: string, matches: RegExp): Promise<{ paths: string[]; capped: boolean; available: boolean }> {
   const names: string[] = [];
   let scanned = 0;
@@ -178,6 +195,11 @@ export async function collectDiagnostics(options: { appHome: string; packageVers
           if (number !== null) event[key] = number;
         }
         if (Array.isArray(source.exhausted)) event.exhaustedCount = Math.min(source.exhausted.length, 10000);
+        for (const key of ['retryAt', 'quotaObservedAt']) {
+          if (key in source) event[key] = timestamp(source[key]);
+        }
+        const selection = sanitizeRotationSelection(source.selection, accountAlias);
+        if (selection) event.selection = selection;
         const launchPolicy = policy(source.policy);
         if (launchPolicy) event.policy = launchPolicy;
         events.push(event);
