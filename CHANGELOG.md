@@ -8,6 +8,11 @@
 - Failed non-quota launches no longer update the successful-account marker or clear saved retry evidence. Authorization switches and eligibility reasons appear in sanitized diagnostics.
 - The existing missing-session regression now drains all buffered stderr chunks instead of checking only the first diagnostic chunk; safe-resume behavior remains unchanged.
 
+### Verification and architecture
+
+- Added native0.162.1 autonomous-goal positive/negative controls and a reproducible isolated real-terminal goal driver. Completion-event checks now wait for the required persisted goal state instead of assuming goal finalization precedes turn completion.
+- Documented the temporary goal-state bridge and deferred profile recovery. A future wrapper-owned isolated-server investigation must prove clean structured rate-limit signals and simpler lifecycle management before migration.
+
 No credential migration is required. Installation affects future launches only; running sessions remain unchanged.
 
 ## 0.3.4

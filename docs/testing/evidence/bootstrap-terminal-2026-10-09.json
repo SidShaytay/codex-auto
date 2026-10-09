@@ -1,0 +1,69 @@
+{
+  "tty": true,
+  "results": [
+    {
+      "shell": "/bin/bash",
+      "mode": "recover",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 3,
+      "terminalRestored": true
+    },
+    {
+      "shell": "/bin/bash",
+      "mode": "all-auth",
+      "pass": true,
+      "exitCode": 1,
+      "launches": 2,
+      "terminalRestored": true
+    },
+    {
+      "shell": "/bin/bash",
+      "mode": "generic",
+      "pass": true,
+      "exitCode": 2,
+      "launches": 1,
+      "terminalRestored": true
+    },
+    {
+      "shell": "/bin/bash",
+      "mode": "unbound",
+      "pass": true,
+      "exitCode": 1,
+      "launches": 1,
+      "terminalRestored": true
+    },
+    {
+      "shell": "/bin/fish",
+      "mode": "recover",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 3,
+      "terminalRestored": true
+    },
+    {
+      "shell": "/bin/fish",
+      "mode": "all-auth",
+      "pass": true,
+      "exitCode": 1,
+      "launches": 2,
+      "terminalRestored": true
+    },
+    {
+      "shell": "/bin/fish",
+      "mode": "generic",
+      "pass": true,
+      "exitCode": 2,
+      "launches": 1,
+      "terminalRestored": true
+    },
+    {
+      "shell": "/bin/fish",
+      "mode": "unbound",
+      "pass": true,
+      "exitCode": 1,
+      "launches": 1,
+      "terminalRestored": true
+    }
+  ]
+}

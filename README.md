@@ -310,11 +310,13 @@ A fatal Codex `account/read` bootstrap error reporting workspace-routing authori
 
 After a quota-triggered switch, recovery reactivates the bound session's goal only when Codex reports it as `usageLimited`. It preserves the objective, token budget, and usage counters. Goals that are already active, paused, blocked, complete, or budget-limited are left unchanged.
 
-This requires native `thread/goal/get` and `thread/goal/set` support, verified with Codex 0.161.0. Recovery uses a separate local Codex server to update saved goal state after the interrupted process exits. It does not attach to the shared daemon, load the conversation, or start tools; it closes before the resumed conversation starts. Credentials stay in the existing local account overlay. The resumed Codex process handles normal provider authentication and autonomous execution.
+This requires native `thread/goal/get` and `thread/goal/set` support, verified with Codex 0.161.0 and 0.162.1. Recovery uses a separate local Codex server to update saved goal state after the interrupted process exits. It does not attach to the shared daemon, load the conversation, or start tools; it closes before the resumed conversation starts. Credentials stay in the existing local account overlay. The resumed Codex process handles normal provider authentication and autonomous execution.
 
 If the API is unavailable, the wrapper warns that it is resuming the conversation only; use `/goal resume` manually if needed. Launches using `-p` / `--profile` also use this fallback because Codex's app-server CLI does not support the TUI's profile selector; recovery will not substitute a different configuration. If Codex reports a quota-limited goal but restoration cannot be verified, recovery stops instead of silently continuing without that goal. Diagnostics record a sanitized `goal_recovery` outcome, never the objective or raw API errors.
 
 Use one controller per thread during recovery. The native API has no conditional status update, so simultaneous goal edits from another client are not supported. Independent threads remain separate.
+
+Profile-aware automatic goal recovery is deferred. The current helper is a short-lived state bridge, not the TUI's backend or a shared daemon. See [architecture and future direction](docs/architecture.md) for the proposed isolated-server investigation and its rate-limit/lifecycle acceptance gates.
 
 ## Environment Variables
 

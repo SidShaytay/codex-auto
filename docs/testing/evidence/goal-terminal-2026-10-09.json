@@ -1,0 +1,150 @@
+{
+  "actualTTY": true,
+  "syntheticOnly": true,
+  "results": [
+    {
+      "shell": "/bin/bash",
+      "scenario": "active",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "paused",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "blocked",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "complete",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "budgetLimited",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "absent",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "set-error",
+      "pass": true,
+      "exitCode": 1,
+      "launches": 1,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "unsupported",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "active",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "paused",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "blocked",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "complete",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "budgetLimited",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "absent",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "set-error",
+      "pass": true,
+      "exitCode": 1,
+      "launches": 1,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    },
+    {
+      "shell": "/bin/fish",
+      "scenario": "unsupported",
+      "pass": true,
+      "exitCode": 0,
+      "launches": 2,
+      "terminalRestored": true,
+      "accountingPreserved": true
+    }
+  ]
+}
