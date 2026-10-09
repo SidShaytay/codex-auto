@@ -9,7 +9,7 @@ import { logsRoot, runsRoot } from './paths.js';
 
 const require = createRequire(import.meta.url);
 const limits = { directoryEntries: 512, filesPerKind: 20, bytesPerFile: 64 * 1024, events: 100 };
-const knownEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end']);
+const knownEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end', 'goal_recovery']);
 const knownStatuses = new Set(['running', 'exited', 'failed', 'recovery_failed']);
 const incidentName = /^incident-(\d{13})-[a-f0-9-]{36}\.json$/i;
 type JsonObject = Record<string, unknown>;
@@ -183,6 +183,10 @@ export async function collectDiagnostics(options: { appHome: string; packageVers
         const event: JsonObject = { time: timestamp(source.time), event: source.event };
         for (const key of ['resume', 'sessionBound', 'quotaDetected', 'missingSessionError', 'interrupted']) {
           if (typeof source[key] === 'boolean') event[key] = source[key];
+        }
+        if (source.event === 'goal_recovery') {
+          if (['restored', 'unchanged', 'unavailable', 'failed', 'interrupted'].includes(String(source.outcome))) event.outcome = source.outcome;
+          if (['protocol', 'timeout', 'process', 'unsupported', 'profile', 'verification'].includes(String(source.reason))) event.reason = source.reason;
         }
         for (const key of ['account', 'from', 'to', 'finalAccount']) {
           const alias = accountAlias(source[key]);

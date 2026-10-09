@@ -11,6 +11,7 @@ import { extractQuotaRetryAvailability, getOutputSinceLatestPrompt, hasQuotaErro
 import { markAccountUsed } from './accounts.js';
 import { readTextIfExists } from './fs.js';
 import { createQuotaEventReader } from './quota-events.js';
+import { recoverQuotaLimitedGoal } from './goal-recovery.js';
 import { accountAuthPath, instanceHome, resolveCodexHome } from './paths.js';
 import { decideAccountRotation, getAccountByName, getCurrentAccount, getPreferredAccount, type QuotaObservation } from './rotation.js';
 import { writeManagedRunState } from './run-state.js';
@@ -1243,6 +1244,31 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
   try {
     const resumePolicyArgs = extractResumePolicyArgs(managedArgs);
     while (true) {
+      if (!firstRun && lastSessionId) {
+        const goalRecovery = await recoverQuotaLimitedGoal({
+          codexCommand, env, workspaceDir: options.workspaceDir,
+          sessionId: lastSessionId, policyArgs: resumePolicyArgs
+        });
+        await logger.log('goal_recovery', { ...goalRecovery, sessionBound: true });
+        if (goalRecovery.outcome === 'failed' || goalRecovery.outcome === 'interrupted') {
+          const interrupted = goalRecovery.outcome === 'interrupted';
+          if (!interrupted) stderr.write('\n[goal recovery] Unable to verify goal restoration; stopping rather than silently continuing without the goal. Resume the goal manually.\n');
+          await logger.log(interrupted ? 'interrupt' : 'recovery_failed', { sessionBound: true, exitCode: interrupted ? 130 : 1 });
+          await writeManagedRunState(options.appHome, {
+            runId, pid: process.pid, workspaceDir: options.workspaceDir, startedAt: runStartedAt,
+            status: interrupted ? 'exited' : 'recovery_failed', currentAccount: current.name,
+            currentSessionId: lastSessionId, sessionBindingLost
+          });
+          return { finalAccount: current.name, switchCount, exitCode: interrupted ? 130 : 1, exhaustedAll: false };
+        }
+        if (goalRecovery.outcome === 'unavailable') {
+          stderr.write(goalRecovery.reason === 'profile'
+            ? '\n[goal recovery] Automatic goal restoration does not support profile launches; resuming the conversation only. Resume an interrupted goal manually.\n'
+            : '\n[goal recovery] Native goal API unavailable; resuming the conversation only. If a goal was interrupted, resume it manually.\n');
+        } else if (goalRecovery.outcome === 'restored') {
+          stderr.write('\n[goal recovery] Restored quota-limited goal to active; resuming the session.\n');
+        }
+      }
       let knownSessionIds = new Set<string>();
       let launchStartedAt = 0;
       if (firstRun && !lastSessionId) {

@@ -22,7 +22,7 @@ export type LaunchPolicySummary = {
 
 export type IncidentReason = 'quota_switch' | 'all_exhausted' | 'recovery_failed' | 'abnormal_exit';
 
-const debugEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end']);
+const debugEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end', 'goal_recovery']);
 
 export async function createSessionLogger(
   appHome: string,
@@ -47,6 +47,10 @@ export async function createSessionLogger(
         };
         for (const key of ['resume', 'sessionBound', 'quotaDetected', 'missingSessionError', 'interrupted']) {
           if (typeof details[key] === 'boolean') safe[key] = details[key];
+        }
+        if (event === 'goal_recovery') {
+          if (['restored', 'unchanged', 'unavailable', 'failed', 'interrupted'].includes(String(details.outcome))) safe.outcome = details.outcome;
+          if (['protocol', 'timeout', 'process', 'unsupported', 'profile', 'verification'].includes(String(details.reason))) safe.reason = details.reason;
         }
         if (typeof details.exitCode === 'number' && Number.isFinite(details.exitCode)) safe.exitCode = details.exitCode;
         if (typeof details.outputCharacters === 'number' && Number.isSafeInteger(details.outputCharacters) && details.outputCharacters >= 0) safe.outputCharacters = details.outputCharacters;

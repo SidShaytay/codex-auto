@@ -189,6 +189,21 @@ Start with two controllable fixture accounts and the latest installed build. Tri
 
 Accept when evidence is recorded from launch without opt-in, incident collection runs automatically, failures to write diagnostics do not block recovery, and redraw/input remain correct. Use `diagnostics --keep latest`, then `--release latest`, and confirm that this does not modify account credentials or conversation history. Privacy/retention are also checked by automated tests; rendered terminal behavior still needs real terminal acceptance.
 
+### 14. Goal continuity across quota recovery
+
+Required whenever goal recovery or automatic resume changes. Obtain permission for a separate test terminal; never use or restart the user's progressing session. Use freshly built code, fake accounts and isolated app/Codex homes. Check the fixture path first, then native Codex with a controlled provider only when authorized.
+
+Accept when:
+
+- A previously active goal becomes usage-limited at quota. After switching, recovery verifies the same thread's goal as active while preserving objective, budget and usage; autonomous work continues beyond the first `Continue` turn without manual `/goal resume`.
+- An absent, paused, blocked, complete or budget-limited goal is not reactivated. An active goal is not rewritten.
+- The helper never loads/resumes a thread, starts tools, connects to a shared daemon or sends keystrokes. It closes before the resumed TUI starts; the other running thread is untouched.
+- An unsupported goal API prints a conversation-only warning. A confirmed quota-limited goal whose update or acknowledgement fails stops recovery with a clear message.
+- Ctrl-C during a delayed goal API request cancels the managed run without a later resumed launch; the helper exits and shell input stays normal. Repeat with Bash and Fish where available.
+- Explicit feature/config overrides reach the native goal helper. A profile launch warns that automatic goal restoration is unsupported rather than changing the selected configuration. Exported `goal_recovery` events include only allowlisted outcomes/reasons, not objectives, prompts or raw errors.
+
+Native goal get/set acknowledgement and synthetic autonomous-turn tests do not prove real terminal acceptance. Use one controller per thread; the native API has no atomic conditional status update for simultaneous edits by another client. Record missing provider/terminal acceptance separately.
+
 ## Record results
 
 - When a real-terminal regression reveals a new scenario, add it to this checklist before fixing the code.

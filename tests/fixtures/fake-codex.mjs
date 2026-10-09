@@ -7,6 +7,13 @@ const commandArgs = args.filter((arg) => arg !== '--no-daemon');
 const codexHome = process.env.CODEX_HOME;
 const logPath = process.env.FAKE_CODEX_LOG;
 
+// The recovery helper must not act like a TUI launch or rewrite session history.
+if (commandArgs[0] === 'app-server') {
+  const { runGoalServer } = await import('./fake-goal-server.mjs');
+  await runGoalServer();
+  process.exit(0);
+}
+
 if (!codexHome) {
   process.stderr.write('missing CODEX_HOME\n');
   process.exit(2);
@@ -35,6 +42,13 @@ const pickerSessionId = process.env.FAKE_CODEX_RESUME_PICKER_SESSION_ID ?? null;
 let pendingAsyncExit = false;
 
 function writeQuotaMessage(retryAt) {
+  if (process.env.FAKE_GOAL_STATE && existsSync(process.env.FAKE_GOAL_STATE)) {
+    const goal = JSON.parse(readFileSync(process.env.FAKE_GOAL_STATE, 'utf8'));
+    if (goal?.status === 'active') {
+      goal.status = 'usageLimited';
+      writeFileSync(process.env.FAKE_GOAL_STATE, JSON.stringify(goal));
+    }
+  }
   if (quotaMessageVariant === 'upgrade') {
     process.stdout.write(
       "■ You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits"
@@ -273,6 +287,11 @@ if (!waitingOnQuota && commandArgs[0] === 'resume') {
     exitWithQuotaAfterPrompt();
   } else {
     process.stdout.write(`Resumed with ${sessionId} ${prompt}\n`);
+    if (process.env.FAKE_GOAL_STATE && existsSync(process.env.FAKE_GOAL_STATE)) {
+      const goal = JSON.parse(readFileSync(process.env.FAKE_GOAL_STATE, 'utf8'));
+      process.stdout.write('continuation turn completed\n');
+      if (goal?.status === 'active') process.stdout.write('autonomous goal turn started\nautonomous goal turn completed\n');
+    }
     process.exit(0);
   }
 }

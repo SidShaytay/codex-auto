@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.4
+
+### Fixed
+
+- Automatic quota recovery restores the bound session's `usageLimited` goal to active through native Codex goal APIs before resuming. The objective, budget and usage counters are preserved; other goal states are unchanged. Native API support is verified with Codex 0.161.0. An unavailable API produces an explicit conversation-only warning; a failed restoration of a confirmed quota-limited goal stops recovery. Profile launches also warn and use conversation-only recovery because the native app-server cannot accept the TUI profile selector.
+- Goal recovery uses an independent local server without loading the thread, connecting to a shared daemon, injecting terminal input, or starting tools. It verifies active-state acknowledgement and closes before the resumed TUI starts. Sanitized diagnostic outcomes omit objectives and raw errors.
+
+No credential migration is required. Existing running sessions are not changed by this patch or an installation. Use the new build for future launches when convenient. The native API has no conditional update; concurrent goal edits by another controller of the same thread are unsupported. Automated and isolated native API checks pass; real terminal regression remains pending.
+
 ## 0.3.3
 
 ### Fixed

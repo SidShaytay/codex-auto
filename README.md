@@ -141,7 +141,7 @@ In an interactive terminal, `codex-auto` periodically checks npm for a newer `co
 - Give a fresh run a brief chance to capture its own recovery target before automatic recovery is abandoned
 - If you cancel an interactive quota prompt with `Ctrl-C`, exit that managed run cleanly instead of forcing an exhausted-accounts flow
 - Stop automatic recovery when the original session cannot be confirmed or its session ID is no longer valid
-- Automatically send `Continue` on resume
+- Restore quota-interrupted `/goal` execution through supported Codex goal APIs before sending `Continue` on automatic resume
 - Record local session events and recovery state
 - Pass through all `codex` arguments and subcommands (e.g. `exec`, `review`, `--model`, `--full-auto`)
 
@@ -301,6 +301,16 @@ Concurrent run behavior:
 - Multiple `codex-auto` sessions in different terminals for the same project each keep their own recovery binding
 - Multiple `codex-auto` sessions in different terminals for different projects also recover independently
 - Recovery decisions are always scoped to the active managed process, not to the latest project-level or global session
+
+### Keep `/goal` running across account changes
+
+After a quota-triggered switch, recovery reactivates the bound session's goal only when Codex reports it as `usageLimited`. It preserves the objective, token budget, and usage counters. Goals that are already active, paused, blocked, complete, or budget-limited are left unchanged.
+
+This requires native `thread/goal/get` and `thread/goal/set` support, verified with Codex 0.161.0. Recovery uses a separate local Codex server to update saved goal state after the interrupted process exits. It does not attach to the shared daemon, load the conversation, or start tools; it closes before the resumed conversation starts. Credentials stay in the existing local account overlay. The resumed Codex process handles normal provider authentication and autonomous execution.
+
+If the API is unavailable, the wrapper warns that it is resuming the conversation only; use `/goal resume` manually if needed. Launches using `-p` / `--profile` also use this fallback because Codex's app-server CLI does not support the TUI's profile selector; recovery will not substitute a different configuration. If Codex reports a quota-limited goal but restoration cannot be verified, recovery stops instead of silently continuing without that goal. Diagnostics record a sanitized `goal_recovery` outcome, never the objective or raw API errors.
+
+Use one controller per thread during recovery. The native API has no conditional status update, so simultaneous goal edits from another client are not supported. Independent threads remain separate.
 
 ## Environment Variables
 
