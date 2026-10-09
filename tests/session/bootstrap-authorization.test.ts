@@ -36,7 +36,7 @@ test.each([
     await writeFile(path.join(codexHome, `sessions/2026/10/09/rollout-2026-10-09T00-00-00-${sessionId}.jsonl`), `${JSON.stringify({ type: 'session_meta', payload: { id: sessionId, cwd: process.cwd(), timestamp: '2026-10-09T00:00:00Z' } })}\n`);
     await seedState(appHome, { version: 1, accounts, currentIndex: 0, preferredAccountName: accounts[0], lastSuccessfulAccount: accounts[0], lastSessionId: sessionId,
       retryAvailabilityByAccount: { b: futureHint }, updatedAt: '2026-10-09T00:00:00Z' });
-    for (const name of accounts) await seedAccount(appHome, name, { account: name, token: '«SECRET SECRET_QUOTED_SECRET_ASSIGNMENT_3 redacted — the real value is live in your shell env; read it in bash as "$SECRET_QUOTED_SECRET_ASSIGNMENT_3"»' });
+    for (const name of accounts) await seedAccount(appHome, name, { account: name, testCredential: 'local-fixture-only' });
     await writeFile(goalPath, JSON.stringify({ threadId: sessionId, status: 'active', objective: 'Synthetic objective', tokenBudget: 999 }));
     const result = await runManagedSession({ appHome, codexHome, workspaceDir: process.cwd(), interactive: false, stdout, stderr,
       extraArgs: ['resume', sessionId], codexCommand: `node ${path.resolve('tests/fixtures/fake-codex.mjs')}`,
