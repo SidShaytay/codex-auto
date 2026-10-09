@@ -204,6 +204,10 @@ Accept when:
 
 Native goal get/set acknowledgement and synthetic autonomous-turn tests do not prove real terminal acceptance. Use one controller per thread; the native API has no atomic conditional status update for simultaneous edits by another client. Record missing provider/terminal acceptance separately.
 
+### 15. Bootstrap authorization recovery
+
+Use isolated fake accounts and a synthetic bound thread in a separate real terminal. On Bash and Fish, trigger quota on account A, fatal native workspace-routing bootstrap401 on B, and successful goal continuation on C. Verify the same thread, active goal, unchanged policy, and separate authorization diagnostics. Repeat with all candidates unauthorized, a generic non-bootstrap401, and an unbound startup: stop without looping or guessing another thread. Failed accounts must not become the last successful account or lose saved reset evidence. After exit, verify restored terminal modes and normal input. Never login, refresh credentials or change the progressing session for this test.
+
 ## Record results
 
 - When a real-terminal regression reveals a new scenario, add it to this checklist before fixing the code.

@@ -6,17 +6,18 @@ export type AccountSelection = {
 };
 
 export type QuotaObservation = { observedAt: string; retryAt: string | null };
-export type AccountEligibility = 'untried' | 'cooldown' | 'reset_elapsed' | 'reset_unknown' | 'reset_unusable';
+export type AccountEligibility = 'untried' | 'cooldown' | 'reset_elapsed' | 'reset_unknown' | 'reset_unusable' | 'authorization_failed';
 export type RotationSelection = {
   checkedAt: string;
-  source: 'local_quota_observations';
+  source: 'local_quota_observations' | 'local_account_observations';
   liveQuotaRefreshed: false;
-  accounts: { account: string; eligibility: AccountEligibility; quotaObservedAt: string | null; retryAt: string | null }[];
+  accounts: { account: string; eligibility: AccountEligibility; quotaObservedAt: string | null; retryAt: string | null; authorizationObservedAt?: string }[];
 };
 
 /** Retain reset evidence independently of state, which removes expired display hints. */
 export function decideAccountRotation(
-  accounts: string[], currentIndex: number, observations: Map<string, QuotaObservation>, now = Date.now()
+  accounts: string[], currentIndex: number, observations: Map<string, QuotaObservation>, now = Date.now(),
+  authorizationFailures: Map<string, string> = new Map()
 ): { next: AccountSelection | null; exhausted: string[]; selection: RotationSelection } {
   const candidates = accounts.map((account) => {
     const observation = observations.get(account);
@@ -28,13 +29,16 @@ export function decideAccountRotation(
         : !Number.isFinite(retryAt) || !Number.isFinite(observedAt) || retryAt <= observedAt ? 'reset_unusable'
         : retryAt > now ? 'cooldown' : 'reset_elapsed';
     }
-    return { account, eligibility, quotaObservedAt: observation?.observedAt ?? null, retryAt: observation?.retryAt ?? null };
+    const authorizationObservedAt = authorizationFailures.get(account);
+    if (authorizationObservedAt) eligibility = 'authorization_failed';
+    return { account, eligibility, quotaObservedAt: observation?.observedAt ?? null, retryAt: observation?.retryAt ?? null,
+      ...(authorizationObservedAt ? { authorizationObservedAt } : {}) };
   });
   const exhausted = candidates.filter(({ eligibility }) => !['untried', 'reset_elapsed'].includes(eligibility))
     .map(({ account }) => account);
   return {
     next: pickNextAccount(accounts, currentIndex, new Set(exhausted)), exhausted,
-    selection: { checkedAt: new Date(now).toISOString(), source: 'local_quota_observations', liveQuotaRefreshed: false, accounts: candidates }
+    selection: { checkedAt: new Date(now).toISOString(), source: authorizationFailures.size > 0 ? 'local_account_observations' : 'local_quota_observations', liveQuotaRefreshed: false, accounts: candidates }
   };
 }
 

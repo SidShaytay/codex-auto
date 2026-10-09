@@ -302,6 +302,10 @@ Concurrent run behavior:
 - Multiple `codex-auto` sessions in different terminals for different projects also recover independently
 - Recovery decisions are always scoped to the active managed process, not to the latest project-level or global session
 
+### Recover from an unavailable account
+
+A fatal Codex `account/read` bootstrap error reporting workspace-routing authorization failure (401) skips that account for the rest of the managed run and tries another eligible account on the same bound thread. This is not a quota error. Recovery does not log in or refresh credentials. If no account is eligible or the thread cannot be identified safely, the wrapper stops. Other failures do not trigger this retry; failed launches are not marked successful. Diagnostics record `authorization_switch` and `authorization_failed` eligibility separately from quota observations.
+
 ### Keep `/goal` running across account changes
 
 After a quota-triggered switch, recovery reactivates the bound session's goal only when Codex reports it as `usageLimited`. It preserves the objective, token budget, and usage counters. Goals that are already active, paused, blocked, complete, or budget-limited are left unchanged.

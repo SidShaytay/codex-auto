@@ -20,9 +20,9 @@ export type LaunchPolicySummary = {
   remote: boolean;
 };
 
-export type IncidentReason = 'quota_switch' | 'all_exhausted' | 'recovery_failed' | 'abnormal_exit';
+export type IncidentReason = 'quota_switch' | 'authorization_switch' | 'all_exhausted' | 'recovery_failed' | 'abnormal_exit';
 
-const debugEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end', 'goal_recovery']);
+const debugEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end', 'goal_recovery', 'authorization_switch']);
 
 export async function createSessionLogger(
   appHome: string,
@@ -45,7 +45,7 @@ export async function createSessionLogger(
           event: debugEvents.has(event) ? event : 'other',
           elapsedMs: Date.now() - startedAt
         };
-        for (const key of ['resume', 'sessionBound', 'quotaDetected', 'missingSessionError', 'interrupted']) {
+        for (const key of ['resume', 'sessionBound', 'quotaDetected', 'bootstrapAuthorizationError', 'missingSessionError', 'interrupted']) {
           if (typeof details[key] === 'boolean') safe[key] = details[key];
         }
         if (event === 'goal_recovery') {
@@ -78,7 +78,7 @@ export async function createSessionLogger(
       }
       const reason = event === 'exit' && typeof details.exitCode === 'number' && details.exitCode !== 0
         ? 'abnormal_exit' : event;
-      if (['quota_switch', 'all_exhausted', 'recovery_failed', 'abnormal_exit'].includes(reason)) {
+      if (['quota_switch', 'authorization_switch', 'all_exhausted', 'recovery_failed', 'abnormal_exit'].includes(reason)) {
         // Recording diagnostics must never prevent account recovery or cleanup.
         try { await options.onIncident?.(reason as IncidentReason); } catch { /* best effort */ }
       }

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.5
+
+### Fixed
+
+- Fatal workspace-routing authorization401 during native TUI bootstrap now skips the unavailable account for this run and retries another eligible account on the same bound thread. Authorization failures are distinct from quota observations and cannot cause an unbounded retry loop. No login or credential refresh is attempted.
+- Failed non-quota launches no longer update the successful-account marker or clear saved retry evidence. Authorization switches and eligibility reasons appear in sanitized diagnostics.
+- The existing missing-session regression now drains all buffered stderr chunks instead of checking only the first diagnostic chunk; safe-resume behavior remains unchanged.
+
+No credential migration is required. Installation affects future launches only; running sessions remain unchanged.
+
 ## 0.3.4
 
 ### Fixed

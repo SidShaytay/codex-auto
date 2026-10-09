@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createSessionLogger, type LaunchPolicySummary } from './logger.js';
 import { buildCodexShellCommand, resolveCodexCommand } from './codex-bin.js';
 import { pruneIncidentDiagnostics, writeIncidentDiagnostics } from './diagnostics.js';
-import { extractQuotaRetryAvailability, getOutputSinceLatestPrompt, hasQuotaError, sanitizeTerminalOutput } from './detection.js';
+import { extractQuotaRetryAvailability, getOutputSinceLatestPrompt, hasBootstrapAuthorizationError, hasQuotaError, sanitizeTerminalOutput } from './detection.js';
 import { markAccountUsed } from './accounts.js';
 import { readTextIfExists } from './fs.js';
 import { createQuotaEventReader } from './quota-events.js';
@@ -1191,6 +1191,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
   }
 
   const quotaObservations = new Map<string, QuotaObservation>();
+  const authorizationFailures = new Map<string, string>();
   let firstRun = true;
   let lastSessionId: string | null = null;
   const instanceId = buildInstanceId();
@@ -1313,12 +1314,16 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
             policyArgs: resumePolicyArgs
           });
 
-      const quotaObservedAt = result.quotaError ? new Date(Date.now()).toISOString() : null;
+      const bootstrapAuthorizationError = result.exitCode !== 0 && hasBootstrapAuthorizationError(result.output);
+      const quotaError = result.quotaError && !bootstrapAuthorizationError;
+      const observedAt = new Date(Date.now()).toISOString();
+      const quotaObservedAt = quotaError ? observedAt : null;
       await logger.log('invocation_end', {
         account: current.name,
         instanceId,
         exitCode: result.exitCode,
-        quotaDetected: result.quotaError,
+        quotaDetected: quotaError,
+        bootstrapAuthorizationError,
         missingSessionError: hasMissingSessionError(result.output),
         interrupted: result.interrupted,
         outputCharacters: result.output.length,
@@ -1332,7 +1337,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
             workspaceDir: options.workspaceDir,
             launchStartedAt,
             knownSessionIds,
-            timeoutMs: result.quotaError ? sessionDiscoveryTimeoutOnQuotaMs : 0
+            timeoutMs: quotaError ? sessionDiscoveryTimeoutOnQuotaMs : 0
           })
         : null;
       if (discoveredSessionId && !lastSessionId) {
@@ -1405,18 +1410,18 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
         };
       }
 
-      if (!result.quotaError) {
+      if (!quotaError && !bootstrapAuthorizationError) {
         const latestState = await loadState(options.appHome);
         latestState.currentIndex = current.index;
-        latestState.lastSuccessfulAccount = current.name;
+        if (result.exitCode === 0) latestState.lastSuccessfulAccount = current.name;
         if (hasMissingSessionError(result.output)) {
           latestState.lastSessionId = null;
         } else if (lastSessionId) {
           latestState.lastSessionId = lastSessionId;
         }
-        delete latestState.retryAvailabilityByAccount[current.name];
+        if (result.exitCode === 0) delete latestState.retryAvailabilityByAccount[current.name];
         await saveState(options.appHome, latestState);
-        await markAccountUsed(options.appHome, current.name);
+        if (result.exitCode === 0) await markAccountUsed(options.appHome, current.name);
         await logger.log('exit', { account: current.name, exitCode: result.exitCode, instanceId });
         await writeManagedRunState(options.appHome, {
           runId,
@@ -1437,19 +1442,20 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
         };
       }
 
-      quotaObservations.set(current.name, {
-        observedAt: quotaObservedAt!, retryAt: result.retryAvailability?.availableAt ?? null
-      });
       const latestState = await loadState(options.appHome);
-      if (result.retryAvailability) {
-        latestState.retryAvailabilityByAccount[current.name] = result.retryAvailability;
+      if (bootstrapAuthorizationError) {
+        authorizationFailures.set(current.name, observedAt);
       } else {
-        delete latestState.retryAvailabilityByAccount[current.name];
+        quotaObservations.set(current.name, {
+          observedAt: quotaObservedAt!, retryAt: result.retryAvailability?.availableAt ?? null
+        });
+        if (result.retryAvailability) latestState.retryAvailabilityByAccount[current.name] = result.retryAvailability;
+        else delete latestState.retryAvailabilityByAccount[current.name];
       }
       // Account order may change during a long invocation. Resolve the current index anew.
       const currentIndex = latestState.accounts.indexOf(current.name);
-      const { next, exhausted, selection } = decideAccountRotation(latestState.accounts, currentIndex, quotaObservations);
-      await logger.log('quota_switch', {
+      const { next, exhausted, selection } = decideAccountRotation(latestState.accounts, currentIndex, quotaObservations, Date.now(), authorizationFailures);
+      await logger.log(bootstrapAuthorizationError ? 'authorization_switch' : 'quota_switch', {
         from: current.name,
         to: next?.name ?? null,
         exhausted,
@@ -1465,7 +1471,7 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
           latestState.lastSessionId = lastSessionId;
         }
         await saveState(options.appHome, latestState);
-        stderr.write('\n[codex-auto] No eligible account based on recorded quota/reset data (not live capacity).\n');
+        stderr.write('\n[codex-auto] No eligible account based on recorded quota/reset data or bootstrap authorization failures (not live capacity).\n');
         await logger.log('all_exhausted', {
           finalAccount: current.name,
           instanceId,
@@ -1514,7 +1520,11 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
       }
 
       switchCount += 1;
-      stderr.write(`\n[codex-auto] ${current.name} hit a quota limit. Switching to ${next.name} and resuming...\n`);
+      if (bootstrapAuthorizationError) {
+        stderr.write('\n[account recovery] Account unavailable after a fatal bootstrap authorization error. Switching to another eligible account on the same session; no login or credential refresh attempted.\n');
+      } else {
+        stderr.write(`\n[codex-auto] ${current.name} hit a quota limit. Switching to ${next.name} and resuming...\n`);
+      }
       latestState.currentIndex = next.index;
       if (lastSessionId) {
         latestState.lastSessionId = lastSessionId;

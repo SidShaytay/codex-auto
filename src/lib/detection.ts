@@ -77,6 +77,13 @@ export function hasPromptMarker(output: string): boolean {
   return getOutputSinceLatestPrompt(output) !== null;
 }
 
+// Only the native fatal bootstrap envelope at the end of a failed invocation
+// qualifies. A bare 401, tool error or historical error followed by progress does not.
+export function hasBootstrapAuthorizationError(output: string): boolean {
+  const normalized = sanitizeTerminalOutput(output).replace(/\s+/g, ' ').trim();
+  return /(?:^| )Error: account\/read failed during TUI bootstrap: account\/read failed: workspace routing discovery unauthorized \(401\) \(code -32603\)$/i.test(normalized);
+}
+
 export function hasQuotaError(output: string): boolean {
   const normalized = sanitizeTerminalOutput(output);
   return quotaPatterns.some((pattern) => pattern.test(normalized));

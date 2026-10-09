@@ -1232,7 +1232,10 @@ console.log('available account resumed');
       const logText = await readFile(logPath, 'utf8');
       expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","missing-session","Continue"]');
       expect(logText).not.toContain('"args":["--no-daemon","resume","--last","--no-alt-screen"]');
-      expect(stderr.read()?.toString() ?? '').toContain('Unable to safely resume bound session');
+      const stderrChunks: string[] = [];
+      let chunk: Buffer | string | null;
+      while ((chunk = stderr.read()) !== null) stderrChunks.push(chunk.toString());
+      expect(stderrChunks.join('')).toContain('Unable to safely resume bound session');
     } finally {
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);

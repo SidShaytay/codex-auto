@@ -6,6 +6,22 @@ import { collectDiagnostics } from '../../src/lib/diagnostics.js';
 import { cleanupTempDir, createTempAppHome } from '../helpers/temp.js';
 
 describe('session evidence', () => {
+  test('authorization evidence stays distinct from quota and excludes private fields', async () => {
+    const appHome = await createTempAppHome(); const debugOutput = new PassThrough();
+    try {
+      const logger = await createSessionLogger(appHome, { debugOutput });
+      await logger.log('authorization_switch', { bootstrapAuthorizationError: true, selection: {
+        checkedAt: '2026-10-09T16:01:28Z', source: 'local_account_observations', liveQuotaRefreshed: false,
+        accounts: [{ account: 'private-account', eligibility: 'authorization_failed', quotaObservedAt: null, retryAt: null,
+          authorizationObservedAt: '2026-10-09T16:01:28Z', credential: 'private-credential' }]
+      }, error: 'private-error' });
+      const debug = debugOutput.read().toString();
+      expect(debug).toContain('authorization_failed'); expect(debug).not.toContain('private');
+      const report = await collectDiagnostics({ appHome, packageVersion: 'test' });
+      expect(JSON.stringify(report.events)).toContain('authorizationObservedAt');
+      expect(JSON.stringify(report.events)).not.toContain('private');
+    } finally { await cleanupTempDir(appHome); }
+  });
   test('goal recovery debug and exported events contain only allowlisted outcomes and reasons', async () => {
     const appHome = await createTempAppHome();
     const debugOutput = new PassThrough();
@@ -18,7 +34,7 @@ describe('session evidence', () => {
       expect(output).not.toContain('private');
       const report = await collectDiagnostics({ appHome, packageVersion: 'test' });
       expect(report.events).toHaveLength(2);
-      expect(report.events[0]).toMatchObject({ event: 'goal_recovery', outcome: 'restored', sessionBound: true });
+      expect(report.events.find((event) => event.outcome === 'restored')).toMatchObject({ event: 'goal_recovery', outcome: 'restored', sessionBound: true });
       expect(JSON.stringify(report.events)).not.toContain('private');
     } finally { await cleanupTempDir(appHome); }
   });

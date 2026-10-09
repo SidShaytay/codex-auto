@@ -136,6 +136,17 @@ if (args[0] === 'login') {
   process.exit(0);
 }
 
+const fakeAccount = authText ? JSON.parse(authText).account : null;
+if ((process.env.FAKE_CODEX_UNAUTHORIZED_ACCOUNTS ?? '').split(',').includes(fakeAccount)) {
+  process.stdout.write('Resuming session…\n');
+  process.stdout.write('› Error: account/read failed during TUI bootstrap: account/read failed: workspace routing discovery unauthorized (401) (code -32603)\n');
+  process.exit(1);
+}
+if (process.env.FAKE_CODEX_GENERIC_FAILURE_ACCOUNT === fakeAccount) {
+  process.stderr.write('A tool returned 401; this is not a native bootstrap error\n');
+  process.exit(2);
+}
+
 // Simulate interactive picker: touch pre-seeded session file to update its mtime,
 // mimicking codex opening the user-selected session before hitting quota.
 if (isPickerResume) {

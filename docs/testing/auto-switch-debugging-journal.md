@@ -107,6 +107,14 @@ A same-thread resume does not itself prove that autonomous goal execution resume
 
 **Correction:** do not infer installed profile semantics from a matching version tag. The installed0.161.0 binary rejects a legacy `profile` config override and its app-server CLI lacks the TUI profile selector. Profile launches therefore warn and retain conversation-only recovery rather than using a mismatched configuration. The incident's saved launch policy has no profile or config overrides. Regression evidence and final check counts belong in S23.
 
+## 2026-10-09 — Bootstrap401 is authorization failure, not quota
+
+Saved incident metadata confirms buildf50d791 switched and resumed the same thread at16:01:26 UTC, then exited1 at16:01:28 without quota or missing-session detection. Native fatal account/read workspace-routing401 is user-supplied evidence; the underlying credential/provider cause remains unverified. The non-quota path wrongly recorded failed invocations as successful and cleared retry evidence.
+
+The patch recognizes only the fatal native bootstrap envelope at the end of a failed invocation, excludes the account for this run under separate authorization evidence, and retries another eligible account on the bound thread. It does not refresh credentials or guess a thread. Generic failures stop; failed invocations no longer count as successful. Five of six new tests fail on the archived previous implementation; the unbound safe-stop control passes. Eight isolated real Ghostty terminal cases pass across Bash/Fish, including goal continuity after quota→401→third-account recovery and bounded stops. This does not establish why the real account returned401. The narrow text envelope remains a compatibility fallback.
+
+The long-standing missing-session test failure was a test false positive: one stderr.read returned only the incident chunk. Draining all chunks passes without changing safe-resume runtime behavior. A goal diagnostic test also depended on order for equal timestamps; it now locates the restored outcome explicitly. Final Bash/native suite182/182 passes; build passes. Live sessions were not touched.
+
 ## Journal maintenance
 
 Each new dated entry should contain:

@@ -9,7 +9,7 @@ import { logsRoot, runsRoot } from './paths.js';
 
 const require = createRequire(import.meta.url);
 const limits = { directoryEntries: 512, filesPerKind: 20, bytesPerFile: 64 * 1024, events: 100 };
-const knownEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end', 'goal_recovery']);
+const knownEvents = new Set(['launch', 'quota_switch', 'all_exhausted', 'interrupt', 'exit', 'recovery_failed', 'abnormal_exit', 'invocation_end', 'goal_recovery', 'authorization_switch']);
 const knownStatuses = new Set(['running', 'exited', 'failed', 'recovery_failed']);
 const incidentName = /^incident-(\d{13})-[a-f0-9-]{36}\.json$/i;
 type JsonObject = Record<string, unknown>;
@@ -69,17 +69,18 @@ function policy(value: unknown): JsonObject | null {
 /** Shared allowlist for exported reports and optional debug output. */
 export function sanitizeRotationSelection(value: unknown, accountAlias: (value: unknown) => string | null): JsonObject | null {
   const source = object(value);
-  if (!source || source.source !== 'local_quota_observations' || source.liveQuotaRefreshed !== false || !Array.isArray(source.accounts)) return null;
+  if (!source || !['local_quota_observations', 'local_account_observations'].includes(source.source as string) || source.liveQuotaRefreshed !== false || !Array.isArray(source.accounts)) return null;
   const accounts: JsonObject[] = [];
   for (const value of source.accounts.slice(0, 64)) {
     const candidate = object(value);
-    if (!candidate || !['untried', 'cooldown', 'reset_elapsed', 'reset_unknown', 'reset_unusable'].includes(candidate.eligibility as string)) continue;
+    if (!candidate || !['untried', 'cooldown', 'reset_elapsed', 'reset_unknown', 'reset_unusable', 'authorization_failed'].includes(candidate.eligibility as string)) continue;
     const account = accountAlias(candidate.account);
     if (account === null) continue;
     accounts.push({ account, eligibility: candidate.eligibility,
-      quotaObservedAt: timestamp(candidate.quotaObservedAt), retryAt: timestamp(candidate.retryAt) });
+      quotaObservedAt: timestamp(candidate.quotaObservedAt), retryAt: timestamp(candidate.retryAt),
+      ...(candidate.eligibility === 'authorization_failed' ? { authorizationObservedAt: timestamp(candidate.authorizationObservedAt) } : {}) });
   }
-  return { checkedAt: timestamp(source.checkedAt), source: 'local_quota_observations', liveQuotaRefreshed: false,
+  return { checkedAt: timestamp(source.checkedAt), source: source.source, liveQuotaRefreshed: false,
     accounts, capped: source.accounts.length > 64 };
 }
 
@@ -181,7 +182,7 @@ export async function collectDiagnostics(options: { appHome: string; packageVers
         const source = object(JSON.parse(line));
         if (!source || !knownEvents.has(source.event as string)) { skippedRecords += 1; continue; }
         const event: JsonObject = { time: timestamp(source.time), event: source.event };
-        for (const key of ['resume', 'sessionBound', 'quotaDetected', 'missingSessionError', 'interrupted']) {
+        for (const key of ['resume', 'sessionBound', 'quotaDetected', 'bootstrapAuthorizationError', 'missingSessionError', 'interrupted']) {
           if (typeof source[key] === 'boolean') event[key] = source[key];
         }
         if (source.event === 'goal_recovery') {
@@ -243,7 +244,7 @@ export async function collectDiagnostics(options: { appHome: string; packageVers
   };
 }
 
-export type IncidentReason = 'quota_switch' | 'all_exhausted' | 'recovery_failed' | 'abnormal_exit';
+export type IncidentReason = 'quota_switch' | 'authorization_switch' | 'all_exhausted' | 'recovery_failed' | 'abnormal_exit';
 
 function retentionDays(env: NodeJS.ProcessEnv = process.env): number {
   const value = env.CODEX_AUTO_DIAGNOSTICS_RETENTION_DAYS ?? '30';
@@ -318,7 +319,7 @@ export async function setIncidentKeep(appHome: string, target: string, keep: boo
 
 /** Save the same allowlisted report automatically; callers handle errors best-effort. */
 export async function writeIncidentDiagnostics(appHome: string, reason: IncidentReason, options: { env?: NodeJS.ProcessEnv } = {}): Promise<string> {
-  if (!['quota_switch', 'all_exhausted', 'recovery_failed', 'abnormal_exit'].includes(reason)) {
+  if (!['quota_switch', 'authorization_switch', 'all_exhausted', 'recovery_failed', 'abnormal_exit'].includes(reason)) {
     throw new Error('Unsupported diagnostic incident reason');
   }
   const directory = path.join(appHome, 'diagnostics');
