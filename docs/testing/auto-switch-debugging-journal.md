@@ -95,6 +95,10 @@ SHELL=/bin/bash npm test -- tests/runtime/quota-events.test.ts tests/session/ses
 
 Bash is a comparison environment, not a substitute for testing the user's shell. Record known failing checks rather than weakening safe-resume assertions. Interactive changes also need approved real terminal regression on the current build; unit tests and fake streams alone are insufficient.
 
+## Goal continuity after quota recovery
+
+A same-thread resume does not itself prove that autonomous goal execution resumed. The wrapper currently supplies an ordinary `Continue` prompt and has no explicit goal-reactivation path. Distinguish conversation progress from confirmed goal-state recovery. For a reported overnight pause, correlate quota, switch, resumed launch and goal status without exporting objective text. Verify the selected native Codex's supported goal interface before choosing a recovery mechanism; a slash command passed as a CLI prompt is not proven equivalent to an interactive slash command. Restore only a previously active goal suspended by quota, never an absent, completed or user-paused goal. Require explicit recovery acknowledgement/state and real terminal regression; fixed delays and prompt injection alone do not establish restoration. The reported approximately01:40 incident remains unverified under the current live/transcript access prohibition.
+
 ## Journal maintenance
 
 Each new dated entry should contain:
