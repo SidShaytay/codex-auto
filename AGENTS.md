@@ -7,6 +7,13 @@
 - Keep changes focused on the requested outcome. Report unresolved issues and verification limits explicitly.
 - Never publish, push, release, or change live account credentials unless the user authorizes that action.
 
+## Codex integration research
+
+- You may inspect the official Codex source at https://github.com/openai/codex to understand native behavior and improve this wrapper. Consult relevant TUI, app-server, protocol, goal-runtime, authentication and workspace-routing code when diagnosing integration issues.
+- Prefer the source tag or commit corresponding to the selected Codex executable. Treat upstream `main` as a research reference, not a compatibility guarantee. Verify assumptions against the actual executable's help, generated protocol schemas and isolated tests; matching version labels alone do not prove identical behavior.
+- Prefer supported native APIs and structured lifecycle/error events over terminal-text parsing, slash-command injection or direct native database edits. Keep unavoidable text fallbacks narrow and document their limits. Preserve the native TUI experience and account/process isolation until a replacement proves effective identity, routing, launch-policy preservation and safe session ownership.
+- Upstream research does not authorize executing unreviewed source, changing upstream repositories, accessing private session content, refreshing live credentials, or interrupting a running session. Existing permission and security restrictions still apply.
+
 ## Learning from corrections
 
 - Before investigating quota detection, account switching, or resume failures, read [the auto-switch debugging journal](docs/testing/auto-switch-debugging-journal.md). Maintain it as a living guide: append dated evidence-backed lessons, revise disproved assumptions, and keep confirmed causes separate from unresolved hypotheses. Record local incidents in `ISSUE.report.md` without staging that file; keep execution state in `TASKS.md`.
