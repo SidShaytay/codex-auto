@@ -1,0 +1,127 @@
+# Auto-switch debugging journal
+
+This is a living investigation guide, not a claim that all recovery issues are fixed. Read it before diagnosing quota detection, account rotation, or resume failures. Add a dated lesson after each material investigation; update the procedure when evidence invalidates an assumption.
+
+Execution state belongs in [TASKS.md](../../TASKS.md). Terminal acceptance belongs in [the real terminal regression checklist](real-terminal-regression.md). Temporary incident details belong in local `ISSUE.report.md`, which must never be staged.
+
+## Safety and permission gate
+
+- Confirm the user's current permissions before accessing a live session. A newer prohibition overrides earlier driving approval. “Do not touch” includes read-only inspection; use previously collected evidence instead.
+- Diagnostic permission does not authorize new windows, pane/layout changes, input injection, hook approval, or restarts. Ask unless explicitly authorized. Never launch a GUI to work around missing terminal permission.
+- Do not print credential files, tokens, runtime configuration, environment values, prompts, or raw transcripts. Keep exported evidence to allowlisted metadata and conclusions. Even ordinary local logs can contain account names and raw session IDs; prefer sanitized incident reports.
+- Use fake credentials and isolated temporary homes for tests. Never activate/import/rotate real credentials, log in, kill unrelated processes, approve hooks, or change provider settings as an incidental diagnostic step.
+
+## Start with the actual symptom
+
+Ask what should have happened and classify the observed failure:
+
+| Evidence | Investigate next |
+| --- | --- |
+| Quota visible, no invocation end or switch | Freshness, prompt-redraw classification, session binding, detector transport |
+| Quota detected, child does not stop | PTY shutdown and process lifecycle; test the real launch shell |
+| Switch recorded, resumed launch missing | Rotation selection, exhausted set, safe binding and recovery errors |
+| Resumed launch recorded, fresh quota on second account | Effective credential/provider identity and real availability; do not call it a missed switch |
+| Only old quota visible after recovery | Historical replay; never infer current exhaustion from the viewport alone |
+| Pane has returned to shell | Inspect completed invocation timeline before assuming a live stalled wrapper |
+
+A successful retry does not explain the previous failure. Preserve the unresolved alternatives instead of naming a phantom bug or claiming both accounts genuinely exhausted.
+
+## Establish provenance and binding
+
+With permission, identify the actual wrapper PID, entry point, start time, Codex executable, shell/transport, launch policy, working directory and bound thread. Pane titles and remembered session IDs can be stale. Compare them locally; export only necessary conclusions.
+
+A newly installed build does not replace code already loaded by a running wrapper. Record both installed revision and running invocation provenance. `CODEX_AUTO_INTERACTIVE_TRANSPORT=direct` inherits terminal streams and does not provide the PTY detector's output/event interception.
+
+Safe repository/installation checks:
+
+```bash
+git status --short
+git log -8 --date=iso --format='%h %ad %s'
+git log --oneline -- src/lib/session.ts src/lib/detection.ts src/lib/quota-events.ts
+(cd /tmp && env CODEX_AUTO_UPDATE_CHECK=0 codex-auto --version)
+```
+
+Use the exact executable involved if PATH may resolve another installation. Do not run the affected conversation merely to inspect version metadata.
+
+## Correlate causal events
+
+Build one timeline per wrapper invocation:
+
+1. `launch`: account selection, resume state, session binding, sanitized policy.
+2. Fresh bound-thread provider error, if available.
+3. `invocation_end`: quotaDetected, interrupted, exitCode, missingSessionError.
+4. `quota_switch`: transition to the next account or no eligible account.
+5. Resumed `launch`, then current-turn progress or a second fresh error.
+6. `all_exhausted`, `recovery_failed`, or normal `exit`, if present.
+
+Sources and limits:
+
+- `<CODEX_AUTO_HOME>/diagnostics/`: automatically generated sanitized incident JSON. Default home is `~/.codex-auto`; see [README diagnostics](../../README.md#troubleshooting) and current CLI help for supported commands.
+- `<CODEX_AUTO_HOME>/logs/`: local JSONL wrapper events. These are not export-safe by default. Select explicit metadata keys instead of dumping whole rows. Do not assume the newest log belongs to the reported pane; correlate run and time first.
+- `<CODEX_AUTO_HOME>/runs/`: per-run binding/status. Compare locally; avoid copying raw account names, workspace paths, or thread identifiers into public artifacts.
+- Bound Codex session JSONL: inspect only approved, selected event metadata. A supported fresh completion has `type=event_msg`, `payload.type=task_complete`, and `payload.error.codex_error_info=usage_limit_exceeded`. Do not copy message/tool/response payloads.
+- Goal state can corroborate `usage_limited`, but does not prove a new provider request or current effective account identity. Inspect databases read-only and omit objective text.
+
+The0.3.2 event reader snapshots the bound file before launch, reads appended records, filters timestamps, and skips existing replacement/truncation contents. Missing/oversized completion records, unavailable history, unbound runs, and unsupported event formats remain evidence gaps. Text fallback still has a five-second replay grace; it is not causal freshness proof.
+
+## Separate identity from detection
+
+A local account label is not proof of the effective provider account. A fresh provider quota event proves a current error on that invocation, not that the intended second account is truly exhausted.
+
+If rotation occurred but the second account also fails:
+
+- Confirm the intended transition and original/resumed `--no-daemon`, approval/sandbox and supported launch overrides.
+- Review the selected Codex executable and local overlay/credential replacement boundary in source. Normal Codex authentication remains external to the wrapper.
+- With renewed permission, compare selected account and overlay credentials locally without printing contents or hashes of secrets. File equality verifies a copy, not provider identity.
+- Verify effective identity and availability in Codex's current account/status/usage views with permission; treat private identifiers as sensitive. Do not approve hooks or change configuration to reach those views.
+- Keep wrong identity, routing/configuration, provider quota/reset state and external process state as hypotheses until evidence separates them.
+
+Do not patch the detector merely because a second invocation returned another genuine error.
+
+## Reproduce, review, verify
+
+Use `tests/fixtures/fake-codex.mjs` with separate temporary app/Codex homes. Check existing tests before inventing a new fixture switch.
+
+Cover quota-before-prompt, LF and no-LF cursor redraw, split chunks, incomplete JSONL, historical replay (including longer than five seconds), other threads, replaced/truncated files, oversized tool records, immediate exit and a child that otherwise stays alive. An8s natural-exit fixture with recovery below4s demonstrates that detection stopped the child rather than waiting for normal exit. Include fish when available and Ctrl-C cancellation; do not paper over lifecycle failures with larger timeouts.
+
+For each confirmed defect, establish old-fails/new-passes using the previous implementation. Compare Git parent and patch behavior with synthetic terminal bytes; viewport screenshots cannot reconstruct the original PTY byte stream. Keep synthetic data separate from private transcripts.
+
+```bash
+npm run build
+npm test
+SHELL=/bin/bash npm test -- tests/runtime/quota-events.test.ts tests/session/session.test.ts
+```
+
+Bash is a comparison environment, not a substitute for testing the user's shell. Record known failing checks rather than weakening safe-resume assertions. Interactive changes also need approved real terminal regression on the current build; unit tests and fake streams alone are insufficient.
+
+## Journal maintenance
+
+Each new dated entry should contain:
+
+- Symptom and expected outcome, without sensitive context.
+- Confirmed evidence and the exact provenance needed to reproduce.
+- Confirmed cause versus hypotheses and missing evidence.
+- Regression added, old/new result, automated and real-terminal checks.
+- Fix or mitigation scope, remaining failure modes, and next investigation trigger.
+
+Correct earlier claims explicitly. Keep this guide concise; move execution details to TASKS.md and compact history to TASKS.log. Never turn a user-reported successful retry into agent-verified acceptance.
+
+## 2026-10-08 — Historical replay and fresh errors after redraw
+
+**Confirmed:** latest-prompt slicing from6af7593 discards quota text before the latest prompt. Cursor-boundary normalization in27a36c9 broadens the blind spot: a synthetic no-LF quota+cursor-redraw trace detects quota in the parent but misses it in the patch. Both versions miss the LF variant. The affected live wrapper predates27a36c9, so that patch cannot explain that specific running instance.
+
+**Delivered:**73ef384 adds bound-thread fresh completion-event detection in0.3.2;6a1a48a records native acceptance. Five fresh-event PTY cases and nine reader cases pass. Final Bash suite130/131; the existing missing-session warning assertion remains separate. Native Ghostty→Zellij testing observed a fresh provider error, one account switch, same-thread resume, and subsequent reasoning/tool progress.
+
+**Limits:** a narrow-resize capture transiently duplicated Unicode input rows before clearing; full redraw/IME acceptance is not established. Unbound/eventless runs retain timing-based text fallback. The completed native reproduction proves one recovery path, not universal future account availability.
+
+**Lesson:** check process launch time and actual thread binding before blaming the newest patch. Do not confuse a prompt redraw with proof that preceding text is historical. Use causal fresh events, not a longer grace period, where supported.
+
+## 2026-10-08 — Reported recurrence, actual switch, later success
+
+**Confirmed from prior authorized inspection:** two later runs switched first→second account, then the bound thread recorded a fresh `usage_limit_exceeded` for the resumed invocation. The wrapper reported all accounts exhausted and returned to the shell. This was not absence of a recorded switch or merely historical text replay.
+
+**Unresolved:** provider-effective identity, true second-account availability, reset timing and external state were not independently verified. The user subsequently reports another retry succeeded; no agent capture established its cause. Stop reproduction unless the issue returns.
+
+**Lesson:** separate detector, rotation, and effective-identity failures. A fresh second-account error does not prove the intended account was used. Keep the local incident checkpoint neutral; do not add speculative runtime changes. Current user instruction prohibits all Zellij access because it is doing real work.
+
+**Next trigger:** on recurrence, obtain current permission, preserve the pane and build a new invocation timeline before input/restart. Compare identity/availability only if the timeline proves rotation occurred.

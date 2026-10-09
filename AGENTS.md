@@ -9,6 +9,9 @@
 
 ## Learning from corrections
 
+- Before investigating quota detection, account switching, or resume failures, read [the auto-switch debugging journal](docs/testing/auto-switch-debugging-journal.md). Maintain it as a living guide: append dated evidence-backed lessons, revise disproved assumptions, and keep confirmed causes separate from unresolved hypotheses. Record local incidents in `ISSUE.report.md` without staging that file; keep execution state in `TASKS.md`.
+- A current prohibition on touching a live session overrides earlier access/driving permission and includes read-only inspection. Use already collected evidence until the user grants access again.
+
 - Treat user corrections and confirmed incidents as inputs to durable improvement. Record the specific lesson in the relevant repository guidance, regression checklist, or task record before handing off; do not rely on conversational memory alone.
 - Turn a confirmed defect into a regression test where practical. Establish that the test fails with the previous implementation and passes with the proposed change.
 - Keep lessons scoped to the evidence. Distinguish confirmed causes, hypotheses, mitigations, and missing verification; revise earlier claims when new evidence changes the conclusion.
