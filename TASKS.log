@@ -1,5 +1,11 @@
 # Completed task history
 
+## 2026-10-09 — S28: Autonomous failover design spike
+
+Research report `NEW_DESIGN_SPIKE.md` compares current TUI/JSONL supervision, owned private app-server, account-owned daemons, auth mutation, headless control, proxy and extension/upstream alternatives. Recommendation: fresh account-isolated server per attempt with structured recovery and native remote TUI, gated on identity/routing, storage ownership, approvals, policy parity and terminal acceptance. Pi-multi-account revision ae7be3eb8b23fa346ab28993dd4526be53a70ffd contributes epochs, failure scopes, capacity freshness and tool witnesses; root MIT licensing is not a dependency/security audit. Provider profiles and GUI support remain optional unverified integrations.
+
+Selected standalone0.162.1 isolated help/generated schemas and matching tagged source were cross-checked. Four localhost synthetic errors delivered structured terminal notifications; ordinary429 mapped to HTTP-bearing retry exhaustion, insufficient_quota to usageLimitExceeded,503/401 to HTTP-bearing connection failures. Existing isolated native goal tests3/3 pass; no real-account or terminal acceptance claimed. Journal records classification lesson. Documentation links/fences and diff reviewed; focused local documentation handoff only, no push/install/runtime change. Previous live-session and credential restrictions remained intact. Prototype requires separate authorization; see TASKS.md and continue.
+
 ## 2026-10-08 — Security assessment and English documentation
 
 - S01 complete: `docs/security-review.md` maps credential flow, network/execution boundaries, and malware indicators. No first-party credential upload or persistence evidence observed. Five source risks recorded: unsafe account names, shell command interpretation, permissive credential copies, fork updater identity, conditional resume policy omission. npm audit: eight affected development package nodes; production audit zero. Dependencies/native binaries/external Codex remain review limits. No remediation applied.

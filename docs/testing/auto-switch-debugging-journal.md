@@ -115,6 +115,12 @@ The patch recognizes only the fatal native bootstrap envelope at the end of a fa
 
 The long-standing missing-session test failure was a test false positive: one stderr.read returned only the incident chunk. Draining all chunks passes without changing safe-resume runtime behavior. A goal diagnostic test also depended on order for equal timestamps; it now locates the restored outcome explicitly. Final Bash/native suite182/182 passes; build passes. Live sessions were not touched.
 
+## 2026-10-09 — Structured enums do not guarantee provider-error classification
+
+Design-spike probes against selected standalone Codex `0.162.1` used fresh isolated homes, no OpenAI auth and a localhost Responses HTTP provider with retry budgets set to zero. HTTP429 `insufficient_quota` emitted attributed terminal `usageLimitExceeded`; HTTP429 `rate_limit_exceeded` instead emitted `responseTooManyFailedAttempts` with status429. HTTP503 and401 emitted `httpConnectionFailed` carrying the status rather than the same-named overload/unauthorized enums. All four produced `error.willRetry=false` and failed `turn/completed` without terminal parsing. These are synthetic inference failures, not live ChatGPT quota/routing verification.
+
+Lesson: use generated schemas plus actual execution probes. Handle HTTP-bearing and unknown variants; do not infer account exhaustion from every429 or expect an enum just because it exists. Observe native retry ownership and final turn state before recovery. Versioned event handling also permits interrupted turns with errors and stopping conditions with no separate Error notification. Detailed evidence and remaining lifecycle/identity gates are in [NEW_DESIGN_SPIKE.md](../../NEW_DESIGN_SPIKE.md); execution state is S28. No runtime code or live session changed.
+
 ## Journal maintenance
 
 Each new dated entry should contain:
