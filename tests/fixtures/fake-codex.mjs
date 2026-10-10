@@ -137,6 +137,25 @@ if (args[0] === 'login') {
 }
 
 const fakeAccount = authText ? JSON.parse(authText).account : null;
+// Opt-in isolated native bootstrap probe: only this synthetic account uses
+// the selected executable; the caller supplies a localhost routing backend.
+if (fakeAccount === 'b' && process.env.FAKE_CODEX_NATIVE_BOOTSTRAP_BIN) {
+  const { spawn } = await import('node:child_process');
+  const origin = process.env.FAKE_CODEX_NATIVE_ROUTING_ORIGIN;
+  if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(origin ?? '')) throw new Error('Isolated localhost routing origin required');
+  const native = spawn(process.env.FAKE_CODEX_NATIVE_BOOTSTRAP_BIN, [...args,
+    '-c', `chatgpt_base_url="${origin}/backend-api/"`, '-c', 'check_for_update_on_startup=false', '-c', 'analytics.enabled=false'],
+    { stdio: 'inherit', env: { PATH: process.env.PATH, HOME: process.env.HOME, CODEX_HOME: codexHome,
+      XDG_CONFIG_HOME: `${process.env.HOME}/config`, XDG_DATA_HOME: `${process.env.HOME}/data`,
+      TERM: process.env.TERM, SHELL: process.env.SHELL } });
+  const deadline = setTimeout(() => native.kill('SIGTERM'), 20000);
+  const code = await new Promise((resolve) => {
+    native.once('error', () => resolve(1));
+    native.once('close', (value) => resolve(value ?? 1));
+  });
+  clearTimeout(deadline);
+  process.exit(code);
+}
 if ((process.env.FAKE_CODEX_UNAUTHORIZED_ACCOUNTS ?? '').split(',').includes(fakeAccount)) {
   process.stdout.write('Resuming session…\n');
   const error = 'Error: account/read failed during TUI bootstrap: account/read failed: workspace routing discovery unauthorized (401) (code -32603)';

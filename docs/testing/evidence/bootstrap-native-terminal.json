@@ -1,0 +1,123 @@
+{
+  "actualTTY": true,
+  "syntheticOnly": true,
+  "generatedAt": "2026-10-10T02:31:10.893Z",
+  "build": {
+    "commit": "ff2391f05705e535b9072991af486e48809962f6",
+    "dirty": true
+  },
+  "sourceHashes": {
+    "cli.js": "556370b6c4b016ac52bb31d7daa4ef5b6c0fd4d423861b386b34e3038914550f",
+    "lib/session.js": "666eb0b34785085e6c62d9bd5456bd771a3b6b5ae6d970a402a1cd54e94bd49e",
+    "lib/detection.js": "2d1295ef8588fe8020ee55daedeb01c09883fb1e333d091b11ee66ecdd436d1c",
+    "lib/update-check.js": "06153d9eaa1db8ac0fef9a92b1cfce6feac3fbf9d4b759e6f5a61022412fe339"
+  },
+  "fixtureHashes": {
+    "tests/fixtures/fake-codex.mjs": "810b6bad2ec489a7f3dd689d3be808500aaecb67c33dafdba3b2ce7690c32d84",
+    "tests/helpers/native-bootstrap.mjs": "2af6cb577212812ba62460a267e11cbacd02f7a7506f81d30d9ffc0542d42224",
+    "tests/fixtures/native-bootstrap-401-tail.json": "5bb0c68a9b0f901a5e60702b43acdad4134ed888e5b4f4bab9a8feafa77d5fa3",
+    "scripts/test-bootstrap-native-terminal.mjs": "c196532d27d09cea8c6d038a2632d065b19ff0da02c6d42877c6253ae2971cc8"
+  },
+  "baselineHashes": {
+    "session.js": "3702917c4ff228396684a72594c359bb3ff510a139184d4f1644047ba8dfffab",
+    "detection.js": "edb88051bd976cffa554785250140e7140d5bb112b9b83a954d2c1dfaef2b526"
+  },
+  "results": [
+    {
+      "shell": "/bin/bash",
+      "implementation": "baseline",
+      "pass": true,
+      "terminalRestored": true,
+      "syntheticOnly": true,
+      "nativeVersionSeen": true,
+      "nativeFatalEnvelopeSeen": true,
+      "routing401Requests": 6,
+      "runResult": {
+        "finalAccount": "b",
+        "switchCount": 1,
+        "exitCode": 1,
+        "exhaustedAll": false
+      },
+      "launches": 2,
+      "nativeExitCode": 1,
+      "nativeAuthorizationClassified": false,
+      "nativeQuotaClassified": false,
+      "sameThread": true,
+      "policyPreserved": true,
+      "goalPreserved": true,
+      "autonomousProgress": false
+    },
+    {
+      "shell": "/bin/bash",
+      "implementation": "patched",
+      "pass": true,
+      "terminalRestored": true,
+      "syntheticOnly": true,
+      "nativeVersionSeen": true,
+      "nativeFatalEnvelopeSeen": true,
+      "routing401Requests": 6,
+      "runResult": {
+        "finalAccount": "c",
+        "switchCount": 2,
+        "exitCode": 0,
+        "exhaustedAll": false
+      },
+      "launches": 3,
+      "nativeExitCode": 1,
+      "nativeAuthorizationClassified": true,
+      "nativeQuotaClassified": false,
+      "sameThread": true,
+      "policyPreserved": true,
+      "goalPreserved": true,
+      "autonomousProgress": true
+    },
+    {
+      "shell": "/bin/fish",
+      "implementation": "baseline",
+      "pass": true,
+      "terminalRestored": true,
+      "syntheticOnly": true,
+      "nativeVersionSeen": true,
+      "nativeFatalEnvelopeSeen": true,
+      "routing401Requests": 6,
+      "runResult": {
+        "finalAccount": "b",
+        "switchCount": 1,
+        "exitCode": 1,
+        "exhaustedAll": false
+      },
+      "launches": 2,
+      "nativeExitCode": 1,
+      "nativeAuthorizationClassified": false,
+      "nativeQuotaClassified": false,
+      "sameThread": true,
+      "policyPreserved": true,
+      "goalPreserved": true,
+      "autonomousProgress": false
+    },
+    {
+      "shell": "/bin/fish",
+      "implementation": "patched",
+      "pass": true,
+      "terminalRestored": true,
+      "syntheticOnly": true,
+      "nativeVersionSeen": true,
+      "nativeFatalEnvelopeSeen": true,
+      "routing401Requests": 6,
+      "runResult": {
+        "finalAccount": "c",
+        "switchCount": 2,
+        "exitCode": 0,
+        "exhaustedAll": false
+      },
+      "launches": 3,
+      "nativeExitCode": 1,
+      "nativeAuthorizationClassified": true,
+      "nativeQuotaClassified": false,
+      "sameThread": true,
+      "policyPreserved": true,
+      "goalPreserved": true,
+      "autonomousProgress": true
+    }
+  ]
+}

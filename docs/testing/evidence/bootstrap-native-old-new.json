@@ -1,0 +1,49 @@
+{
+  "syntheticOnly": true,
+  "nativeVersion": "0.162.1",
+  "baselineSource": "34cab84",
+  "results": [
+    {
+      "implementation": "baseline",
+      "syntheticOnly": true,
+      "nativeVersionSeen": true,
+      "nativeFatalEnvelopeSeen": true,
+      "routing401Requests": 6,
+      "runResult": {
+        "finalAccount": "b",
+        "switchCount": 1,
+        "exitCode": 1,
+        "exhaustedAll": false
+      },
+      "launches": 2,
+      "nativeExitCode": 1,
+      "nativeAuthorizationClassified": false,
+      "nativeQuotaClassified": false,
+      "sameThread": true,
+      "policyPreserved": true,
+      "goalPreserved": true,
+      "autonomousProgress": false
+    },
+    {
+      "implementation": "patched",
+      "syntheticOnly": true,
+      "nativeVersionSeen": true,
+      "nativeFatalEnvelopeSeen": true,
+      "routing401Requests": 6,
+      "runResult": {
+        "finalAccount": "c",
+        "switchCount": 2,
+        "exitCode": 0,
+        "exhaustedAll": false
+      },
+      "launches": 3,
+      "nativeExitCode": 1,
+      "nativeAuthorizationClassified": true,
+      "nativeQuotaClassified": false,
+      "sameThread": true,
+      "policyPreserved": true,
+      "goalPreserved": true,
+      "autonomousProgress": true
+    }
+  ]
+}

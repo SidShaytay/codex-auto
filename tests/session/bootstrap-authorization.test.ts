@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { PassThrough } from 'node:stream';
 import { expect, test } from 'vitest';
 import { hasBootstrapAuthorizationError } from '../../src/lib/detection.js';
+import nativeTail from '../fixtures/native-bootstrap-401-tail.json';
 import { runManagedSession } from '../../src/lib/session.js';
 import { loadState } from '../../src/lib/state.js';
 import { cleanupTempDir, createTempAppHome, seedAccount, seedState } from '../helpers/temp.js';
@@ -11,6 +12,12 @@ const fatal = '› Error: account/read failed during TUI bootstrap: account/read
 // Codex 0.162.1 emits these private-parameter/intermediate CSI sequences
 // during terminal teardown. Older strip-ansi does not consume them fully.
 const teardown = '\u001b[<1u\u001b[<u\u001b[>4;0m\u001b[?2004l\u001b[?1004l\u001b[0 q\u001b[?25h';
+
+test('recognizes the unmodified fatal tail captured from native routing401 bootstrap', () => {
+  expect(nativeTail.syntheticOnly).toBe(true);
+  expect(hasBootstrapAuthorizationError(nativeTail.rawTail)).toBe(true);
+  expect(hasBootstrapAuthorizationError(`${nativeTail.rawTail}\nWorking again`)).toBe(false);
+});
 
 test('recognizes a fatal envelope next to native terminal teardown without swallowing progress', () => {
   const error = fatal.replace('› ', '');
