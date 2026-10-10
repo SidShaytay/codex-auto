@@ -34,6 +34,16 @@ test('recognizes only the fatal native bootstrap envelope at the end, not arbitr
   }
 });
 
+test('small repeated native fatal envelopes remain authorization errors, not unrelated encrypted-content failures', () => {
+  const repeated = `${nativeTail.rawTail}\n${nativeTail.rawTail}`;
+  expect(repeated.length).toBeLessThan(1000);
+  expect(hasBootstrapAuthorizationError(repeated)).toBe(true);
+  expect(hasBootstrapAuthorizationError(`${repeated}\nWorking again`)).toBe(false);
+  const encrypted = 'Error: Codex error: The encrypted content for item synthetic-item could not be verified. Reason: Encrypted content could not be decrypted or parsed.';
+  expect(hasBootstrapAuthorizationError(encrypted)).toBe(false);
+  expect(hasBootstrapAuthorizationError(`${nativeTail.rawTail}\n${encrypted}`)).toBe(false);
+});
+
 test.each([
   { name: 'quota then unauthorized then goal progress', accounts: ['a', 'b', 'c'], unauthorized: 'b', expected: 'c', switches: 2, exitCode: 0 },
   { name: 'native teardown and split escapes recover to goal progress', accounts: ['a', 'b', 'c'], unauthorized: 'b', terminalControls: true, expected: 'c', switches: 2, exitCode: 0 },

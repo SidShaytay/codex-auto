@@ -1,0 +1,10 @@
+{
+  "syntheticOnly": true,
+  "originalIncidentBytesAvailable": false,
+  "incidentSourceCommit": "48aa15c",
+  "comparisonFixture": "tests/fixtures/native-bootstrap-401-tail.json",
+  "baseline": false,
+  "current": true,
+  "repeatedBaseline": false,
+  "repeatedCurrent": true
+}

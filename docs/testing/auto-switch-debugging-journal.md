@@ -131,6 +131,12 @@ Lesson: use generated schemas plus actual execution probes. Handle HTTP-bearing 
 
 **Limits/lesson:** the native reproduction verifies the reported failure path but does not recover the exact original incident byte stream or establish the provider-side401 cause. Do not widen fatal matching to arbitrary401 text or call a longer delay a fix. Normalize complete control sequences across transport chunks while retaining bounded memory and narrow fatal evidence. Baseline Fish pipe-lifecycle timeouts reproduce on unchanged34cab84; they are not acceptance for this patch, and Bash full-suite plus separate real Fish-terminal results must be named separately. No live session or credentials were accessed. Physical keyboard/IME and broader live account identity checks remain outside this scoped acceptance.
 
+## 2026-10-10 — Recurrence on a pre-fix build is not evidence that the patch failed
+
+Saved incident metadata identifies source48aa15c, before S29's68312c4 normalization patch. The original terminal bytes are not retained; supplied visible text cannot reconstruct them. The maintained actual-native synthetic routing401 fixture returns false on archived48aa15c and true on the current build, including repeated small envelopes. Comparison metadata is in [S30 evidence](evidence/bootstrap-s30-baseline.json). Do not label synthetic reconstruction as an exact incident capture, or treat literal `[0 q` without ESC as a transport defect.
+
+Added negative controls keep encrypted-content verification failures separate from fatal bootstrap authorization evidence. Their provider/session cause remains unverified; no credential refresh, session deletion or quota misclassification is justified. Build and full Bash suite with selected native checks pass195/195. With explicit approval, fresh isolated Ghostty native regression passes2/2 on Bash/Fish, including same-thread/policy/goal continuity and terminal-mode restoration; durable report is [S30 terminal evidence](evidence/bootstrap-s30-terminal.json). User accepted maintained reproduction instead of unavailable incident bytes and no speculative runtime changes. Delivery remains tracked in S30; existing sessions remain untouched.
+
 ## Journal maintenance
 
 Each new dated entry should contain:
