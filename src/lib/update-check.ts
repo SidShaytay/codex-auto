@@ -67,7 +67,9 @@ function compareVersions(left: string, right: string): number {
 }
 
 function shouldSkipForEnv(env: NodeJS.ProcessEnv): boolean {
-  return env.CODEX_AUTO_UPDATE_CHECK === '0' || env.CODEX_AUTO_NO_UPDATE_CHECK === '1';
+  // Normal launches must never wait for a human-driven upgrade decision.
+  // Retain the old prompt only as an explicit interactive opt-in.
+  return env.CODEX_AUTO_UPDATE_CHECK !== '1' || env.CODEX_AUTO_NO_UPDATE_CHECK === '1';
 }
 
 function isFresh(cache: UpdateCheckCache | null, now: Date): boolean {

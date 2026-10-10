@@ -1,4 +1,4 @@
-import { Writable } from 'node:stream';
+import { Readable, Writable } from 'node:stream';
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { describe, expect, test } from 'vitest';
@@ -27,6 +27,19 @@ async function readPackageVersion(): Promise<string> {
 }
 
 describe('cli', () => {
+  test.each([['list'], ['resume', 'synthetic-update-thread']])('launch %j does not prompt for a cached upgrade without an env override', async (...args) => {
+    const appHome = await createTempAppHome();
+    const codexHome = await createTempAppHome('update-cli-');
+    const output = Object.assign(new CaptureStream(), { isTTY: true });
+    const stdin = Object.assign(Readable.from(['\n']), { isTTY: true }) as unknown as NodeJS.ReadStream;
+    try {
+      await writeFile(path.join(appHome, 'update-check.json'), JSON.stringify({ checkedAt: new Date().toISOString(), latestVersion: '99.0.0' }));
+      await runCli(args, { appHome, codexHome, stdin, stdout: output, stderr: output,
+        env: { CODEX_AUTO_UPDATE_CHECK: undefined, CODEX_AUTO_NO_UPDATE_CHECK: undefined } });
+      expect(output.toString()).not.toMatch(/Update available|Update now|npm install/);
+      expect(JSON.parse(await readFile(path.join(appHome, 'update-check.json'), 'utf8')).latestVersion).toBe('99.0.0');
+    } finally { await cleanupTempDir(appHome); await cleanupTempDir(codexHome); }
+  });
   test.each(['--remote=unix:///tmp/test', '--remote-auth-token-env=TOKEN', 'agents', 'app-server', 'remote-control'])(
     'rejects %s before bootstrapping the source credentials', async (arg) => {
       const appHome = await createTempAppHome();

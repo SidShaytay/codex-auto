@@ -26,6 +26,34 @@ function ttyInput(): Readable & { isTTY?: boolean } {
 }
 
 describe('update check', () => {
+  test.each([{}, { CODEX_AUTO_UPDATE_CHECK: '0' }, { CODEX_AUTO_UPDATE_CHECK: '1', CODEX_AUTO_NO_UPDATE_CHECK: '1' }])(
+    'does not fetch, prompt or install by default or when disabled: %j', async (env) => {
+      const appHome = await createTempAppHome();
+      const stderr = new CaptureStream();
+      const calls: string[] = [];
+      try {
+        await maybePromptForUpdate({ appHome, packageName: 'codex-auto', currentVersion: '0.3.5', stdin: ttyInput(), stderr, env,
+          fetchLatestVersion: async () => { calls.push('fetch'); return '99.0.0'; },
+          readAnswer: async () => { calls.push('prompt'); return 'y'; },
+          runInstall: async () => { calls.push('install'); return 0; } });
+        expect(calls).toEqual([]);
+        expect(stderr.toString()).toBe('');
+      } finally { await cleanupTempDir(appHome); }
+    }
+  );
+
+  test('explicit opt-in retains interactive update choices', async () => {
+    const appHome = await createTempAppHome();
+    const stderr = new CaptureStream();
+    let prompted = false;
+    try {
+      await maybePromptForUpdate({ appHome, packageName: 'codex-auto', currentVersion: '0.3.5', stdin: ttyInput(), stderr,
+        env: { CODEX_AUTO_UPDATE_CHECK: '1' }, fetchLatestVersion: async () => '99.0.0',
+        readAnswer: async () => { prompted = true; return ''; } });
+      expect(prompted).toBe(true);
+      expect(stderr.toString()).toContain('Update available');
+    } finally { await cleanupTempDir(appHome); }
+  });
   test('prompts and runs the installer when a newer version is accepted', async () => {
     const appHome = await createTempAppHome();
     const stderr = new CaptureStream();

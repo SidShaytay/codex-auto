@@ -112,7 +112,7 @@ codex-auto version
 
 源码构建会在版本输出中包含 Git 提交标识，例如 `0.3.0+git.abcdef123456`。`.dirty` 后缀表示构建时已跟踪的文件存在未提交更改。提交标识保存在安装快照中，因此离开源码目录后仍能识别该构建。没有 Git 元数据的构建显示基础包版本。
 
-在交互式终端中，`codex-auto` 会定期检查 npm 上是否有新版本。发现新版本时，会提示立即更新、跳过该版本或稍后提醒。设置 `CODEX_AUTO_UPDATE_CHECK=0` 可关闭检查。
+正常启动不会检查更新或等待升级确认，无人值守的代理无需额外设置环境变量即可启动和恢复。需要更新时，请主动运行 `npm install -g codex-auto@latest`；也可设置 `CODEX_AUTO_UPDATE_CHECK=1`，启用交互式更新、跳过或稍后提醒提示。
 
 ## 适用场景
 
@@ -132,7 +132,7 @@ codex-auto version
 - 保持日常终端中的交互体验，并在自动切号或强制停止后恢复正常的 shell 输入。
 - 保存后续运行的默认起始账号。
 - 仅写入账号的 `auth.json`，将受管账号激活给原生 `codex` CLI 使用。
-- 在交互式终端中提示更新，并提供立即更新、跳过和稍后提醒选项。
+- 默认启动时不显示升级提示；交互式更新提醒需主动启用。
 - 触发额度限制时自动切换到下一个账号。
 - 识别当前 Codex 的额度提示，包括带重试时间的升级或购买提示。
 - 显示仍在等待额度恢复的账号及其重试时间。
@@ -330,7 +330,7 @@ codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
   `codex` 可执行文件路径。默认：`codex`。
 
 - `CODEX_AUTO_UPDATE_CHECK`
-  设置为 `0` 可关闭交互式更新提示。
+  默认关闭更新检查和提示。设置为 `1` 可启用交互式检查；`0` 保持关闭。即使启用了检查，`CODEX_AUTO_NO_UPDATE_CHECK=1` 也会将其关闭。
 
 - `CODEX_AUTO_DEBUG`
   设为 `1` 可在 stderr 中实时显示脱敏的启动和恢复信息。自动事故采集始终启用。
@@ -381,7 +381,7 @@ codex-auto --codex-home /path/to/.codex [any codex arguments...]
 ```sh
 npm ci
 npm run build
-env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
+node ./dist/index.js --help
 ```
 
 `npm ci` 安装 `package-lock.json` 中锁定的依赖，仍会从 npm 下载依赖。通过 `node ./dist/index.js` 运行的 CLI 来自**当前检出版本**，不受全局安装的 `codex-auto` 影响。安装会执行项目的构建钩子和依赖的初始化钩子，包括 `node-pty` 的内置二进制检查或原生编译回退。要在不执行生命周期钩子的情况下安装，可先运行 `npm ci --ignore-scripts`，再显式构建；交互式使用前，原生依赖可能仍需要执行经过审查的初始化步骤。
@@ -390,10 +390,10 @@ env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
 
 ```sh
 cd /path/to/project
-env CODEX_AUTO_UPDATE_CHECK=0 node /path/to/your/fork/dist/index.js
+node /path/to/your/fork/dist/index.js
 ```
 
-工作目录决定 Codex 打开的项目。这些示例适用于 bash 和 fish。关闭更新检查可避免开发运行提示用上游 npm 发行版替换你的 fork。除非显式覆盖，否则运行仍使用已配置的账号和源 Codex home。
+工作目录决定 Codex 打开的项目。这些示例适用于 bash 和 fish。更新检查默认关闭，因此开发运行不会提示用上游 npm 发行版替换你的 fork。除非显式覆盖，否则运行仍使用已配置的账号和源 Codex home。
 
 ### 提交前测试改动
 
@@ -402,7 +402,7 @@ env CODEX_AUTO_UPDATE_CHECK=0 node /path/to/your/fork/dist/index.js
 ```sh
 npm run build
 npm test
-env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
+node ./dist/index.js --help
 ```
 
 调试特定区域时，可以运行针对性测试：
@@ -411,7 +411,7 @@ env CODEX_AUTO_UPDATE_CHECK=0 node ./dist/index.js --help
 npm test -- tests/session/session.test.ts
 ```
 
-需要 JavaScript 调试器时，用 `node --inspect-brk ./dist/index.js` 启动构建后的入口，并像上面一样通过 `env CODEX_AUTO_UPDATE_CHECK=0` 关闭更新检查。调试器会在启动前暂停，方便连接支持 Node 的调试器。当前构建不生成源码映射，因此单步调试使用 `dist/` 中的编译文件。
+需要 JavaScript 调试器时，用 `node --inspect-brk ./dist/index.js` 启动构建后的入口。调试器会在启动前暂停，方便连接支持 Node 的调试器。当前构建不生成源码映射，因此单步调试使用 `dist/` 中的编译文件。
 
 影响交互行为的改动还必须按[真实终端回归清单](./docs/testing/real-terminal-regression.md)，在真实终端中使用刚构建的入口验证。仅自动化测试无法验证终端行为。暂存提交时，请将问题修复及其针对性测试与无关的工作区改动分开。
 
@@ -447,7 +447,7 @@ codex-auto --version
 codex-auto --no-daemon -a never --no-alt-screen -s danger-full-access
 ```
 
-运行分支时，可用 `env CODEX_AUTO_UPDATE_CHECK=0 codex-auto ...` 禁用上游更新提示。安装命令使用 [npm 的 `--install-links` 选项](https://docs.npmjs.com/cli/v11/commands/npm-install/)，安装副本而不是指向检出目录的链接。
+升级提示默认关闭，无需添加环境变量前缀。安装命令使用 [npm 的 `--install-links` 选项](https://docs.npmjs.com/cli/v11/commands/npm-install/)，安装副本而不是指向检出目录的链接。
 
 ## 自动诊断
 

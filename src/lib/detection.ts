@@ -50,7 +50,11 @@ function parseMeridiemTime(displayText: string): Date | null {
 export function sanitizeTerminalOutput(output: string): string {
   // Cursor-positioned redraws start a new screen line without emitting LF.
   // Keep that boundary before removing ANSI so prompt detection sees it.
-  return stripAnsi(output.replace(/\u001b\[[\d;]*[HfGdABEF]/g, '\n'))
+  return stripAnsi(output.replace(/\u001b\[[\d;]*[HfGdABEF]/g, '\n')
+    // Consume full ECMA-48 CSI sequences before strip-ansi. Native Codex uses
+    // private parameters (<, >, ?) and intermediates (e.g. DECSCUSR: CSI 0 SP q)
+    // that strip-ansi otherwise leaves as printable debris beside fatal errors.
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, ''))
     .replace(/\r/g, '\n')
     .replace(/[^\S\n]+/g, ' ')
     .replace(/\u0000/g, '');

@@ -107,11 +107,12 @@ Accept when:
 
 Required whenever a change affects update prompts, confirmation input, or skipping updates on a real TTY.
 
-Trigger a controlled new-version prompt in a real terminal. Test postponement or an empty Enter response, skipping the version, and updating now when feasible. Enter short text after returning to the shell.
+Seed a newer version in the isolated update cache and launch without `CODEX_AUTO_UPDATE_CHECK` or `CODEX_AUTO_NO_UPDATE_CHECK`: startup and resume must proceed without a registry check or upgrade prompt. Then opt in with `CODEX_AUTO_UPDATE_CHECK=1` and trigger a controlled new-version prompt. Test postponement or an empty Enter response, skipping the version, and updating now with a fake installer. Enter short text after returning to the shell.
 
 Accept when:
 
-- Update prompts appear only in interactive terminals and do not contaminate exact output such as `--version`.
+- Normal launches never wait for an upgrade decision, including when a newer version is cached. No environment prefix is required.
+- Opt-in update prompts appear only in interactive terminals and do not contaminate exact output such as `--version`. Existing explicit disable settings win over opt-in.
 - `s` or `skip` records the skipped version and prevents repeated prompts for it.
 - An empty Enter response dismisses the prompt without blocking the command.
 - Shell input, Enter, and Backspace work normally afterward.
@@ -207,6 +208,8 @@ Native goal get/set acknowledgement and synthetic autonomous-turn tests do not p
 ### 15. Bootstrap authorization recovery
 
 Use isolated fake accounts and a synthetic bound thread in a separate real terminal. On Bash and Fish, trigger quota on account A, fatal native workspace-routing bootstrap401 on B, and successful goal continuation on C. Verify the same thread, active goal, unchanged policy, and separate authorization diagnostics. Repeat with all candidates unauthorized, a generic non-bootstrap401, and an unbound startup: stop without looping or guessing another thread. Failed accounts must not become the last successful account or lose saved reset evidence. After exit, verify restored terminal modes and normal input. Never login, refresh credentials or change the progressing session for this test.
+
+Include native terminal teardown (`CSI <1u`, `CSI <u`, `CSI >4;0m`, `CSI 0 SP q`) immediately beside the fatal envelope and after its final newline. Split an escape sequence across writes and repeat on Bash/Fish. The error must still classify as authorization, without expanding to bare401/tool errors or historical errors followed by progress. Verify both normal launches and resumes require no update-disable environment setting. `scripts/test-bootstrap-terminal.mjs` provides a reproducible synthetic real-TTY driver with explicit policy, goal continuity, bounded-stop and replay controls; injected update answers do not replace physical keyboard/IME checks.
 
 ## Record results
 

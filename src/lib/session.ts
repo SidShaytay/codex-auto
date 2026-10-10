@@ -742,7 +742,14 @@ async function launchInvocation(options: {
   const command = buildCodexShellCommand(options.codexCommand, options.args);
   const shell = options.env.SHELL || '/bin/zsh';
   const stdout = options.stdout;
+  let rawOutput = '';
   let sanitizedOutput = '';
+  // Escape sequences can span data events. Normalize a bounded raw tail rather
+  // than permanently leaking partial CSI/OSC sequences from individual chunks.
+  const appendOutput = (data: string): void => {
+    rawOutput = `${rawOutput}${data}`.slice(-65536);
+    sanitizedOutput = sanitizeTerminalOutput(rawOutput).slice(-20000);
+  };
   let quotaRelevantOutput = '';
   let pendingPrePromptQuotaTimer: NodeJS.Timeout | null = null;
   let pendingPostPromptQuotaTimer: NodeJS.Timeout | null = null;
@@ -959,7 +966,7 @@ async function launchInvocation(options: {
 
     const dataDisposable = ptyProcess.onData((data) => {
       stdout.write(data);
-      sanitizedOutput = `${sanitizedOutput}${sanitizeTerminalOutput(data)}`.slice(-20000);
+      appendOutput(data);
       handlePotentialQuota();
     });
 
@@ -1087,14 +1094,14 @@ async function launchInvocation(options: {
   child.stdout?.on('data', (chunk: Buffer | string) => {
     const data = chunk.toString();
     stdout.write(data);
-    sanitizedOutput = `${sanitizedOutput}${sanitizeTerminalOutput(data)}`.slice(-20000);
+    appendOutput(data);
     triggerQuotaRotation();
   });
 
   child.stderr?.on('data', (chunk: Buffer | string) => {
     const data = chunk.toString();
     stdout.write(data);
-    sanitizedOutput = `${sanitizedOutput}${sanitizeTerminalOutput(data)}`.slice(-20000);
+    appendOutput(data);
     triggerQuotaRotation();
   });
 

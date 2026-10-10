@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.6
+
+### Fixed
+
+- Normal launches no longer check npm or wait for an upgrade decision. Manual `npm install -g codex-auto@latest` remains available; `CODEX_AUTO_UPDATE_CHECK=1` explicitly opts into interactive reminders. Existing disable settings remain supported.
+- Fatal workspace-routing bootstrap401 detection now handles modern native terminal-control sequences and escape sequences split across output chunks. Recovery still excludes unavailable accounts only for this run, preserves the bound thread and launch policy, and stops when no safe candidate remains. Generic errors and historical errors followed by progress do not trigger authorization recovery.
+
+No credential migration or refresh is required. Use the new build for future launches; already running wrappers are unchanged. This fixes verified terminal-normalization failure paths, not the provider-side reason for HTTP401; the original incident did not preserve raw terminal bytes.
+
 ## 0.3.5
 
 ### Fixed

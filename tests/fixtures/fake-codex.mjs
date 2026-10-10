@@ -139,7 +139,18 @@ if (args[0] === 'login') {
 const fakeAccount = authText ? JSON.parse(authText).account : null;
 if ((process.env.FAKE_CODEX_UNAUTHORIZED_ACCOUNTS ?? '').split(',').includes(fakeAccount)) {
   process.stdout.write('Resuming session…\n');
-  process.stdout.write('› Error: account/read failed during TUI bootstrap: account/read failed: workspace routing discovery unauthorized (401) (code -32603)\n');
+  const error = 'Error: account/read failed during TUI bootstrap: account/read failed: workspace routing discovery unauthorized (401) (code -32603)';
+  if (process.env.FAKE_CODEX_BOOTSTRAP_TERMINAL_CONTROLS === '1') {
+    const teardown = '\u001b[<1u\u001b[<u\u001b[>4;0m\u001b[?2004l\u001b[?1004l\u001b[0 q\u001b[?25h';
+    // Separate writes with a split CSI, including a split final teardown.
+    // The delay creates chunk boundaries; recovery never depends on the delay.
+    for (const chunk of [`›\u001b[37;3H${teardown}\u001b[`, `31m${error}\u001b[0m\r\n\u001b[>`, `4;0m${teardown}`]) {
+      await new Promise((resolve) => process.stdout.write(chunk, resolve));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  } else {
+    process.stdout.write(`› ${error}\n`);
+  }
   process.exit(1);
 }
 if (process.env.FAKE_CODEX_GENERIC_FAILURE_ACCOUNT === fakeAccount) {

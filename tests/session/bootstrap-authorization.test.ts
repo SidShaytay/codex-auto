@@ -8,6 +8,15 @@ import { loadState } from '../../src/lib/state.js';
 import { cleanupTempDir, createTempAppHome, seedAccount, seedState } from '../helpers/temp.js';
 
 const fatal = '› Error: account/read failed during TUI bootstrap: account/read failed: workspace routing discovery unauthorized (401) (code -32603)';
+// Codex 0.162.1 emits these private-parameter/intermediate CSI sequences
+// during terminal teardown. Older strip-ansi does not consume them fully.
+const teardown = '\u001b[<1u\u001b[<u\u001b[>4;0m\u001b[?2004l\u001b[?1004l\u001b[0 q\u001b[?25h';
+
+test('recognizes a fatal envelope next to native terminal teardown without swallowing progress', () => {
+  const error = fatal.replace('› ', '');
+  expect(hasBootstrapAuthorizationError(`›\u001b[37;3H${teardown}${error}\r\n${teardown}`)).toBe(true);
+  expect(hasBootstrapAuthorizationError(`›\u001b[37;3H${teardown}${error}\r\nWorking again${teardown}`)).toBe(false);
+});
 
 test('recognizes only the fatal native bootstrap envelope at the end, not arbitrary or historical 401 text', () => {
   expect(hasBootstrapAuthorizationError(`Resuming session…\n${fatal}\n`)).toBe(true);
@@ -20,10 +29,11 @@ test('recognizes only the fatal native bootstrap envelope at the end, not arbitr
 
 test.each([
   { name: 'quota then unauthorized then goal progress', accounts: ['a', 'b', 'c'], unauthorized: 'b', expected: 'c', switches: 2, exitCode: 0 },
+  { name: 'native teardown and split escapes recover to goal progress', accounts: ['a', 'b', 'c'], unauthorized: 'b', terminalControls: true, expected: 'c', switches: 2, exitCode: 0 },
   { name: 'quota and unauthorized accounts stop without false quota', accounts: ['a', 'b'], unauthorized: 'b', expected: 'b', switches: 1, exitCode: 1 },
   { name: 'all unauthorized accounts are attempted only once', accounts: ['b', 'c'], unauthorized: 'b,c', expected: 'c', switches: 1, exitCode: 1 },
   { name: 'other fatal errors are not rotated or marked successful', accounts: ['b', 'c'], unauthorized: '', genericFailure: 'b', expected: 'b', switches: 0, exitCode: 2 }
-])('$name', async ({ accounts, unauthorized, genericFailure, expected, switches, exitCode }) => {
+])('$name', async ({ accounts, unauthorized, genericFailure, terminalControls, expected, switches, exitCode }) => {
   const appHome = await createTempAppHome(); const codexHome = await createTempAppHome('bootstrap-codex-');
   const launches = path.join(appHome, 'launches.jsonl'); const goalPath = path.join(appHome, 'goal.json');
   const stdout = new PassThrough(); const stderr = new PassThrough();
@@ -41,7 +51,8 @@ test.each([
     const result = await runManagedSession({ appHome, codexHome, workspaceDir: process.cwd(), interactive: false, stdout, stderr,
       extraArgs: ['resume', sessionId], codexCommand: `node ${path.resolve('tests/fixtures/fake-codex.mjs')}`,
       env: { ...process.env, SHELL: '/bin/bash', FAKE_CODEX_SESSION_ID: sessionId, FAKE_CODEX_LOG: launches,
-        FAKE_GOAL_STATE: goalPath, FAKE_CODEX_UNAUTHORIZED_ACCOUNTS: unauthorized, FAKE_CODEX_GENERIC_FAILURE_ACCOUNT: genericFailure }
+        FAKE_GOAL_STATE: goalPath, FAKE_CODEX_UNAUTHORIZED_ACCOUNTS: unauthorized, FAKE_CODEX_GENERIC_FAILURE_ACCOUNT: genericFailure,
+        FAKE_CODEX_BOOTSTRAP_TERMINAL_CONTROLS: terminalControls ? '1' : undefined }
     });
     expect(result).toMatchObject({ finalAccount: expected, switchCount: switches, exitCode });
     const launchRows = (await readFile(launches, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
