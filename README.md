@@ -112,7 +112,7 @@ codex-auto version
 
 Source builds include their Git revision in version output, for example `0.3.0+git.abcdef123456`. A `.dirty` suffix means tracked files had uncommitted changes when built. The revision is saved in the installed snapshot, so it still identifies that build outside the checkout. Builds without Git metadata show the base package version.
 
-Normal launches do not check for updates or wait for upgrade confirmation, so unattended agents can start and resume without an extra environment setting. Update deliberately with `npm install -g codex-auto@latest`, or set `CODEX_AUTO_UPDATE_CHECK=1` to opt into interactive update, skip, or later prompts.
+Normal launches do not check for updates or wait for upgrade confirmation, so unattended agents can start and resume without an extra environment setting. Update deliberately with `npm install -g codex-auto@latest`. After a managed interactive session exits, the wrapper checks npm metadata at most once per day and prints a notice for a newer stable version. It never asks for input or installs an update. Offline checks are silent and time out after 2.5 seconds; cancellation, noninteractive runs and management commands skip the check. The request sends only the package name, not account or session data.
 
 ## Use Cases
 
@@ -132,7 +132,7 @@ Normal launches do not check for updates or wait for upgrade confirmation, so un
 - Keep interactive Codex sessions usable in normal terminal workflows, including clean shell input after automatic rotation or forced stops
 - Save a default start account for future runs
 - Activate a managed account for the native `codex` CLI by writing only that account's `auth.json`
-- Start without upgrade prompts by default; interactive update reminders are opt-in
+- Start without upgrade prompts; receive optional daily update notices after interactive sessions exit
 - Automatically switch to the next account on rate limit
 - Recognize current Codex quota prompts, including upgrade/purchase messages with retry times
 - Show retry times for accounts that are still waiting for quota to reset
@@ -332,7 +332,7 @@ Profile-aware automatic goal recovery is deferred. The current helper is a short
   Path to the `codex` executable. Default: `codex`
 
 - `CODEX_AUTO_UPDATE_CHECK`
-  Update checks and prompts are off by default. Set to `1` to opt into interactive checks; `0` keeps them off. `CODEX_AUTO_NO_UPDATE_CHECK=1` also disables them, even with opt-in.
+  Exit-only update notices are enabled by default; no environment prefix is needed for safe launches. Set to `0` to disable the daily metadata request and notice. `1` also uses exit-only notices, never a launch prompt or automatic install. `CODEX_AUTO_NO_UPDATE_CHECK=1` disables notices as well.
 
 - `CODEX_AUTO_DEBUG`
   Set to `1` for live sanitized launch and recovery details on stderr. Automatic incident collection is always enabled.

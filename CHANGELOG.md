@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+### Changed
+
+- Update checks now run only after managed interactive sessions exit, with a daily cache and cross-process reservation. Startup and account recovery never query npm or wait for an update decision, including with `CODEX_AUTO_UPDATE_CHECK=1`.
+- Newer stable versions produce a notice and manual update command, without reading input or installing packages. Registry checks stop after 2.5 seconds; offline failures are silent and count as a daily attempt. Cancellation, noninteractive runs and management commands skip checks.
+
+Migration: no launch prefix is required. `CODEX_AUTO_UPDATE_CHECK=0` and `CODEX_AUTO_NO_UPDATE_CHECK=1` disable exit notices and requests. The previous opt-in interactive update/skip/install workflow is removed; use the manual npm update command when desired. This pre-1.0 minor bump records that behavior change. Update requests send only the package name to the fixed npm registry; credentials and session data remain local. Existing sessions are not changed by installation.
+
 ## 0.3.7
 
 ### Fixed

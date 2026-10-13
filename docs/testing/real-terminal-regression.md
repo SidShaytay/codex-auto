@@ -104,19 +104,19 @@ Accept when:
 - A newly interactive session whose recovery target becomes visible shortly afterward is given time to bind before recovery is abandoned.
 - The terminal display remains correct after rotation.
 
-### 7. Interactive update prompt
+### 7. Exit-only update notices
 
-Required whenever a change affects update prompts, confirmation input, or skipping updates on a real TTY.
+Required whenever a change affects update checking or terminal notifications.
 
-Seed a newer version in the isolated update cache and launch without `CODEX_AUTO_UPDATE_CHECK` or `CODEX_AUTO_NO_UPDATE_CHECK`: startup and resume must proceed without a registry check or upgrade prompt. Then opt in with `CODEX_AUTO_UPDATE_CHECK=1` and trigger a controlled new-version prompt. Test postponement or an empty Enter response, skipping the version, and updating now with a fake installer. Enter short text after returning to the shell.
+Use isolated homes, fake accounts and injected npm metadata, never a real installer. Launch without an update environment prefix and with the legacy `CODEX_AUTO_UPDATE_CHECK=1`. Verify checks occur only after the child exits and terminal modes restore. Repeat within 24 hours, with explicit disable settings, offline errors and a nonresponsive metadata fetch. Enter short text after returning to the shell.
 
 Accept when:
 
-- Normal launches never wait for an upgrade decision, including when a newer version is cached. No environment prefix is required.
-- Opt-in update prompts appear only in interactive terminals and do not contaminate exact output such as `--version`. Existing explicit disable settings win over opt-in.
-- `s` or `skip` records the skipped version and prevents repeated prompts for it.
-- An empty Enter response dismisses the prompt without blocking the command.
-- Shell input, Enter, and Backspace work normally afterward.
+- Startup and automatic resume never query npm, prompt for an upgrade, consume input or install anything, even with legacy opt-in or cached newer metadata.
+- A completed interactive managed run may show one exit notice per day; repeated or concurrent exits sharing an app home do not repeat the request. Failed/offline attempts also count toward the daily limit.
+- A metadata fetch lasts at most 2.5 seconds; failures are silent and preserve the managed exit code.
+- Explicit disable settings, cancellation, noninteractive runs and management commands skip the check; exact version/diagnostic output is unchanged.
+- Terminal modes restore before the notice. Shell input, Enter and Backspace work normally afterward.
 
 ### 8. Concurrent terminals in the same project
 

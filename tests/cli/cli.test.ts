@@ -1,9 +1,10 @@
 import { Readable, Writable } from 'node:stream';
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { runCli, extractAccountOption, isOwnCommand } from '../../src/cli.js';
 import { loadState } from '../../src/lib/state.js';
+import * as sessionRuntime from '../../src/lib/session.js';
 import { cleanupTempDir, createTempAppHome, seedAccount, seedState } from '../helpers/temp.js';
 
 class CaptureStream extends Writable {
@@ -27,6 +28,43 @@ async function readPackageVersion(): Promise<string> {
 }
 
 describe('cli', () => {
+  test.each([[2, true, 1], [130, true, 0], [0, false, 0]] as const)(
+    'preserves exit %s and checks only eligible interactive exits (%s)', async (exit, interactive, fetches) => {
+      const appHome = await createTempAppHome(); const codexHome = await createTempAppHome('exit-policy-');
+      const output = Object.assign(new CaptureStream(), { isTTY: true });
+      const stdin = Object.assign(Readable.from([]), { isTTY: true }) as unknown as NodeJS.ReadStream;
+      const child = vi.spyOn(sessionRuntime, 'runManagedSession').mockResolvedValue({ finalAccount: 'b', switchCount: 0, exitCode: exit, exhaustedAll: false });
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ version: '99.0.0' })));
+      try {
+        await seedState(appHome, { version: 1, accounts: ['b'], currentIndex: 0, preferredAccountName: 'b', lastSuccessfulAccount: null,
+          lastSessionId: null, updatedAt: new Date().toISOString() });
+        expect(await runCli([], { appHome, codexHome, stdin, stdout: output, stderr: output, interactive,
+          env: { CODEX_AUTO_UPDATE_CHECK: undefined, CODEX_AUTO_NO_UPDATE_CHECK: undefined } })).toBe(exit);
+        expect(fetchMock).toHaveBeenCalledTimes(fetches);
+      } finally { child.mockRestore(); fetchMock.mockRestore(); await cleanupTempDir(appHome); await cleanupTempDir(codexHome); }
+    });
+  test.each([undefined, '1'])('checks updates only after the managed child exits, even with opt-in %s', async updateSetting => {
+    const appHome = await createTempAppHome(); const codexHome = await createTempAppHome('exit-update-cli-');
+    const output = Object.assign(new CaptureStream(), { isTTY: true, columns: 80, rows: 24 });
+    const stdin = Object.assign(Readable.from(['\n']), { isTTY: true }) as unknown as NodeJS.ReadStream;
+    const launches = path.join(appHome, 'launches.jsonl');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      expect(output.toString()).toContain('session started');
+      expect((await readFile(launches, 'utf8')).trim()).not.toBe('');
+      return new Response(JSON.stringify({ version: '99.0.0' }), { status: 200 });
+    });
+    try {
+      await seedState(appHome, { version: 1, accounts: ['b'], currentIndex: 0, preferredAccountName: 'b',
+        lastSuccessfulAccount: null, lastSessionId: null, updatedAt: new Date().toISOString() });
+      await seedAccount(appHome, 'b', { account: 'b' });
+      const code = await runCli([], { appHome, codexHome, stdin, stdout: output, stderr: output,
+        env: { SHELL: '/bin/bash', CODEX_AUTO_UPDATE_CHECK: updateSetting, CODEX_AUTO_NO_UPDATE_CHECK: undefined,
+          CODEX_AUTO_CODEX_BIN: `node ${path.resolve('tests/fixtures/fake-codex.mjs')}`, FAKE_CODEX_LOG: launches } });
+      expect(code).toBe(0); expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(output.toString()).toContain('Update available'); expect(output.toString()).not.toContain('Update now?');
+      expect(output.toString().indexOf('session started')).toBeLessThan(output.toString().indexOf('Update available'));
+    } finally { fetchMock.mockRestore(); await cleanupTempDir(appHome); await cleanupTempDir(codexHome); }
+  });
   test.each([['list'], ['resume', 'synthetic-update-thread']])('launch %j does not prompt for a cached upgrade without an env override', async (...args) => {
     const appHome = await createTempAppHome();
     const codexHome = await createTempAppHome('update-cli-');

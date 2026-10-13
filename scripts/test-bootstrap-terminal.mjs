@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runCli } from '../dist/cli.js';
-import { maybePromptForUpdate } from '../dist/lib/update-check.js';
+import { maybeNotifyUpdateOnExit } from '../dist/lib/update-check.js';
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 assert(process.stdin.isTTY && process.stdout.isTTY && process.stderr.isTTY, 'Actual terminal required');
@@ -46,7 +46,7 @@ for (const shell of ['/bin/bash', '/bin/fish']) for (const scenario of [
       await mkdir(path.join(app, 'accounts', account), { recursive: true });
       await writeFile(path.join(app, 'accounts', account, 'auth.json'), JSON.stringify({ account }));
     }
-    // A newer cached npm version would previously interrupt a real TTY launch.
+    // Cached newer metadata must not interrupt startup or recovery.
     await writeFile(path.join(app, 'update-check.json'), JSON.stringify({ checkedAt: new Date().toISOString(), latestVersion: '99.0.0' }));
     if (!scenario.unbound) await writeFile(path.join(codex, `sessions/2026/10/09/rollout-2026-10-09T00-00-00-${thread}.jsonl`),
       `${JSON.stringify({ type: 'session_meta', payload: { id: thread, cwd: workspace, timestamp: '2026-10-09T00:00:00Z' } })}\n`);
@@ -91,22 +91,16 @@ for (const shell of ['/bin/bash', '/bin/fish']) for (const scenario of [
   }
 }
 
-// Keep explicit update choices usable. No registry, npm installation or credentials.
-// Answers are injected; this does not claim physical keyboard/IME acceptance.
-for (const answer of ['', 's', 'y']) {
+// No real registry, installer, injected input or credentials.
+for (const setting of [undefined, '1', '0']) {
   const home = await mkdtemp('/tmp/bootstrap-update-terminal-');
   try {
-    let prompts = 0; let installs = 0;
-    await maybePromptForUpdate({ appHome: home, packageName: 'codex-auto', currentVersion: '0.3.6',
-      stdin: process.stdin, stderr: process.stderr, env: { CODEX_AUTO_UPDATE_CHECK: '1' },
-      fetchLatestVersion: async () => '99.0.0', readAnswer: async () => { prompts++; return answer; },
-      runInstall: async () => { installs++; return 0; } });
-    if (answer === 's') await maybePromptForUpdate({ appHome: home, packageName: 'codex-auto', currentVersion: '0.3.6',
-      stdin: process.stdin, stderr: process.stderr, env: { CODEX_AUTO_UPDATE_CHECK: '1' },
-      fetchLatestVersion: async () => { throw new Error('Cache should suppress fetch'); },
-      readAnswer: async () => { prompts++; return ''; } });
+    let fetches = 0;
+    const options = { appHome: home, packageName: 'example-wrapper', currentVersion: '0.4.0', stderr: process.stderr,
+      env: { CODEX_AUTO_UPDATE_CHECK: setting }, fetchLatestVersion: async () => { fetches++; return '99.0.0'; } };
+    await maybeNotifyUpdateOnExit(options); await maybeNotifyUpdateOnExit(options);
     const terminalRestored = baseline === modes();
-    results.push({ scenario: `opt-in-${answer || 'later'}`, pass: prompts === 1 && installs === (answer === 'y' ? 1 : 0) && terminalRestored, terminalRestored });
+    results.push({ scenario: `exit-notice-${setting ?? 'default'}`, pass: fetches === (setting === '0' ? 0 : 1) && terminalRestored, terminalRestored });
   } finally { await rm(home, { recursive: true, force: true }); }
 }
 await writeFile(outputPath, JSON.stringify({ actualTTY: true, syntheticOnly: true, generatedAt: new Date().toISOString(),

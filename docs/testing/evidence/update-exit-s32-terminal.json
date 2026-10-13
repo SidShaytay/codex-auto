@@ -1,0 +1,207 @@
+{
+  "actualTTY": true,
+  "syntheticOnly": true,
+  "generatedAt": "2026-10-13T19:45:44.949Z",
+  "build": {
+    "commit": "6bc320bc8cd07ae46385abea2c7e68fe173d9999",
+    "dirty": true
+  },
+  "sourceHashes": {
+    "cli.js": "4eb1bfb21af1cc0c29b64760b8816fa4fe06a20686c0fadc4ebd7edbbe957cb4",
+    "lib/update-check.js": "7dea960c8c6b2f7f0aa3dc5ddd099ada04328316c12df91b92810e599407784b"
+  },
+  "results": [
+    {
+      "shell": "/bin/bash",
+      "scenario": "default",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 1,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 134
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "legacy-opt-in",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 1,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 103
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "disabled",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 0,
+      "notices": 0,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 107
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "offline",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 0,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 101
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "timeout",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 0,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 2629
+    },
+    {
+      "shell": "/bin/bash",
+      "scenario": "failed-child",
+      "pass": true,
+      "codes": [
+        2,
+        2
+      ],
+      "fetches": 1,
+      "notices": 1,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 138
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "scenario": "default",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 1,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 103
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "scenario": "legacy-opt-in",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 1,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 100
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "scenario": "disabled",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 0,
+      "notices": 0,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 94
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "scenario": "offline",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 0,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 101
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "scenario": "timeout",
+      "pass": true,
+      "codes": [
+        0,
+        0
+      ],
+      "fetches": 1,
+      "notices": 0,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 2600
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "scenario": "failed-child",
+      "pass": true,
+      "codes": [
+        2,
+        2
+      ],
+      "fetches": 1,
+      "notices": 1,
+      "afterExit": true,
+      "restoredBeforeFetch": true,
+      "terminalRestored": true,
+      "timeoutAborted": true,
+      "elapsedMs": 96
+    }
+  ]
+}

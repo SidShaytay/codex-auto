@@ -14,7 +14,7 @@ import { resolveAppHome, resolveCodexHome } from './lib/paths.js';
 import { loadState } from './lib/state.js';
 import { ensureAppLayout } from './lib/runtime.js';
 import { enforceManagedServerPolicy, runManagedSession } from './lib/session.js';
-import { maybePromptForUpdate } from './lib/update-check.js';
+import { maybeNotifyUpdateOnExit } from './lib/update-check.js';
 import { formatBuildVersion } from './lib/build-info.js';
 import { collectDiagnostics, setIncidentKeep } from './lib/diagnostics.js';
 
@@ -85,13 +85,6 @@ export function isOwnCommand(rest: string[]): boolean {
   return false;
 }
 
-function shouldPromptForUpdate(rest: string[]): boolean {
-  if (rest.includes('--help') || rest.includes('-h')) return false;
-  if (rest.includes('--version') || rest.includes('-V')) return false;
-  const firstPositional = rest.find((a) => !a.startsWith('-'));
-  return firstPositional !== 'help' && firstPositional !== 'version' && firstPositional !== 'diagnostics';
-}
-
 export async function runCli(argv: string[], options: CliRunOptions = {}): Promise<number> {
   const env = {
     ...process.env,
@@ -119,17 +112,6 @@ export async function runCli(argv: string[], options: CliRunOptions = {}): Promi
     }
   }
 
-  if (shouldPromptForUpdate(rest)) {
-    await maybePromptForUpdate({
-      appHome,
-      packageName,
-      currentVersion: packageVersion,
-      stdin,
-      stderr,
-      env
-    });
-  }
-
   if (!isOwnCommand(rest)) {
     let state = await loadState(appHome);
     if (state.accounts.length === 0) {
@@ -154,6 +136,9 @@ export async function runCli(argv: string[], options: CliRunOptions = {}): Promi
       interactive
     });
 
+    if (interactive && result.exitCode !== 130) {
+      await maybeNotifyUpdateOnExit({ appHome, packageName, currentVersion: packageVersion, stderr, env });
+    }
     return result.exhaustedAll ? 1 : result.exitCode;
   }
 
