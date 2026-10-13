@@ -1226,15 +1226,9 @@ export async function runManagedSession(options: RunManagedSessionOptions): Prom
     workspaceDir: options.workspaceDir
   });
 
-  // For bare `resume` with no explicit session ID or --last, fall back to the last known
-  // session from state so that account switching can resume the correct session without
-  // requiring the user to re-select from the picker on the new account.
-  if (!lastSessionId) {
-    const firstPositional = managedArgs[findFirstPositionalIndex(managedArgs)];
-    if (firstPositional === 'resume') {
-      lastSessionId = state.lastSessionId ?? null;
-    }
-  }
+  // Bare `resume` opens a picker. Remembered state is not evidence of the
+  // user's selection: discover the selected thread from this invocation instead.
+  // Explicit targets and --last are resolved above.
 
   if (lastSessionId) {
     await writeManagedRunState(options.appHome, {

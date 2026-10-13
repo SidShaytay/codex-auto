@@ -137,6 +137,14 @@ Saved incident metadata identifies source48aa15c, before S29's68312c4 normalizat
 
 Added negative controls keep encrypted-content verification failures separate from fatal bootstrap authorization evidence. Their provider/session cause remains unverified; no credential refresh, session deletion or quota misclassification is justified. Build and full Bash suite with selected native checks pass195/195. With explicit approval, fresh isolated Ghostty native regression passes2/2 on Bash/Fish, including same-thread/policy/goal continuity and terminal-mode restoration; durable report is [S30 terminal evidence](evidence/bootstrap-s30-terminal.json). User accepted maintained reproduction instead of unavailable incident bytes and no speculative runtime changes. Delivery remains tracked in S30; existing sessions remain untouched.
 
+## 2026-10-13 — Remembered state is not a resume-picker selection
+
+**Confirmed defect:** bare `resume` passed the original picker arguments to Codex but pre-bound wrapper recovery and event monitoring to `state.lastSessionId`. A fake-account regression selecting B while remembered state identifies A fails on the old runtime: automatic recovery resumes A. Removing that fallback makes the regression pass; explicit targets and `--last` are unchanged. Missing selection artifacts now stop recovery instead of guessing the remembered thread.
+
+**Incident limits:** saved October13 metadata establishes a fresh quota completion in the requested thread and a different wrapper-monitored thread, but does not establish how that mismatch arose. Do not identify the picker defect as this incident's proven cause. In-TUI thread changes, subagent threads and unbound picker redraw detection remain separate possibilities/gaps. No restarted session was inspected. Build and full Bash/native195/195 pass. Approved isolated Ghostty real terminal regression passes4/4 across Bash/Fish with selected-thread recovery, missing-evidence safe stop and terminal-mode restoration; [sanitized evidence](evidence/picker-s31-terminal.json) is retained. Both new regressions fail on archived261c55e. Selection still uses existing file discovery, not a new supported native lifecycle signal.
+
+**Execution lesson:** a user request to capture evidence and notify them before restarting does not pause separately authorized development. Continue from the snapshot without live access; record an actual permission blocker rather than silently ending work.
+
 ## Journal maintenance
 
 Each new dated entry should contain:

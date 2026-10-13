@@ -99,6 +99,7 @@ Accept when:
 - In an explicitly bound resumed session, append a fresh `event_msg` / `task_complete` record with `error.codex_error_info: "usage_limit_exceeded"` and redraw `›` below the quota message in the same output chunk. Rotation must still occur and preserve the session ID. Repeat with pre-existing error records, a newly appended old-timestamp record, and an error in another thread; none must trigger the event path.
 - Verify the running wrapper started after the tested build. Installing a patch does not replace code already loaded by a live wrapper; record its launch time and actual resume ID rather than inferring them from a stale pane title.
 - Recovery resumes the same session.
+- With fake accounts, seed remembered thread A, launch bare `resume`, select thread B and trigger quota. Recovery must resume B, never A. Repeat without selection artifacts: recovery must stop without guessing A. Check explicit IDs and `--last` still bind before launch. Unbound picker launches still lack structured-event protection; do not count a visible-redraw quota test as coverage of that separate gap.
 - Replayed quota text from an old transcript does not incorrectly mark the current account as newly exhausted.
 - A newly interactive session whose recovery target becomes visible shortly afterward is given time to bind before recovery is abandoned.
 - The terminal display remains correct after rotation.

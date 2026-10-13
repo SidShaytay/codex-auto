@@ -447,7 +447,7 @@ console.log('available account resumed');
     }
   });
 
-  test('uses state.lastSessionId as fallback when bare resume has no explicit session id', async () => {
+  test('stops safely when a bare resume picker supplies no binding evidence despite remembered state', async () => {
     const appHome = await createTempAppHome();
     const codexHome = await createTempAppHome('codex-home-');
     const logPath = path.join(appHome, 'fake-codex-no-session.log');
@@ -482,20 +482,19 @@ console.log('available account resumed');
         interactive: false
       });
 
-      expect(result.switchCount).toBe(1);
-      expect(result.finalAccount).toBe('b');
+      expect(result.switchCount).toBe(0);
+      expect(result.finalAccount).toBe('a');
       const logText = await readFile(logPath, 'utf8');
-      // First run uses original args; second run uses state.lastSessionId to resume
       expect(logText).toContain('"args":["--no-daemon","resume","--no-alt-screen"]');
-      expect(logText).toContain('"args":["resume","--no-alt-screen","--no-daemon","state-last-session","Continue"]');
-      expect(stderr.read()?.toString() ?? '').not.toContain('Unable to safely resume bound session');
+      expect(logText).not.toContain('"state-last-session","Continue"');
+      expect(result.exitCode).not.toBe(0);
     } finally {
       await cleanupTempDir(appHome);
       await cleanupTempDir(codexHome);
     }
   });
 
-  test('binds session from interactive resume picker via session file mtime when no session id is in args', async () => {
+  test('binds picker selection even when state remembers a different session', async () => {
     const appHome = await createTempAppHome();
     const codexHome = await createTempAppHome('codex-home-');
     const logPath = path.join(appHome, 'fake-codex-picker.log');
@@ -513,7 +512,7 @@ console.log('available account resumed');
         currentIndex: 0,
         preferredAccountName: 'a',
         lastSuccessfulAccount: null,
-        lastSessionId: null,
+        lastSessionId: 'unrelated-remembered-session',
         updatedAt: '2026-04-17T00:00:00.000Z'
       });
       await seedAccount(appHome, 'a', { account: 'a', token: 'a-token' });

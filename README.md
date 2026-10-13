@@ -282,6 +282,8 @@ codex resume --no-daemon --no-alt-screen <session-id> Continue
 
 An earlier account becomes eligible again once its recorded retry time passes, even during a long managed run. A fresh quota error replaces that account's previous reset evidence. Missing, invalid, or already-past retry times keep that account excluded for the rest of this run to avoid immediate retry loops. Retry-time parsing uses the local timezone when Codex omits one. Eligibility is not a live capacity check: the wrapper does not query provider usage percentages or guarantee that an eligible account has capacity.
 
+Bare `resume` opens Codex's session picker. Automatic recovery discovers the chosen session instead of assuming the previously remembered session. If selection evidence is unavailable, recovery stops rather than continuing another conversation. Use `resume <session-id>` to bind the target explicitly before launch; unbound picker launches do not have structured quota-event protection until a target is known.
+
 Recovery preserves explicitly supplied approval, sandbox, configuration, profile, model, and provider settings. For example, when you start with:
 
 ```sh

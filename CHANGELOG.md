@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.7
+
+### Fixed
+
+- Bare `resume` no longer pre-binds quota recovery to the previously remembered conversation. Recovery discovers the picker selection; missing selection evidence causes a safe stop rather than resuming a different thread. Explicit session IDs and `--last` retain their behavior.
+
+No credential migration is required. Existing running wrappers remain unchanged. This fixes a reproduced stale-picker binding defect; it does not establish the cause of the October 13 overnight stop or add structured quota protection to unbound picker launches.
+
 ## 0.3.6
 
 ### Fixed

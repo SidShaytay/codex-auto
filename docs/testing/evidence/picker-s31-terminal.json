@@ -1,0 +1,64 @@
+{
+  "actualTTY": true,
+  "syntheticOnly": true,
+  "generatedAt": "2026-10-13T19:08:09.349Z",
+  "build": {
+    "commit": "261c55e17e1cc154b95fda4d82283ee390b6f0c2",
+    "dirty": true
+  },
+  "sessionHash": "6876b923e453141585243fc2d69c4b9d193c5fe59e04db38ca6ed08f4df81a7b",
+  "results": [
+    {
+      "shell": "/bin/bash",
+      "selectionEvidence": true,
+      "pass": true,
+      "terminalRestored": true,
+      "noRememberedResume": true,
+      "sameSelection": true,
+      "safeStop": true,
+      "exitCode": 0,
+      "switches": 1,
+      "launches": 2,
+      "quotaDetected": true
+    },
+    {
+      "shell": "/bin/bash",
+      "selectionEvidence": false,
+      "pass": true,
+      "terminalRestored": true,
+      "noRememberedResume": true,
+      "sameSelection": true,
+      "safeStop": true,
+      "exitCode": 1,
+      "switches": 0,
+      "launches": 1,
+      "quotaDetected": true
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "selectionEvidence": true,
+      "pass": true,
+      "terminalRestored": true,
+      "noRememberedResume": true,
+      "sameSelection": true,
+      "safeStop": true,
+      "exitCode": 0,
+      "switches": 1,
+      "launches": 2,
+      "quotaDetected": true
+    },
+    {
+      "shell": "/usr/bin/fish",
+      "selectionEvidence": false,
+      "pass": true,
+      "terminalRestored": true,
+      "noRememberedResume": true,
+      "sameSelection": true,
+      "safeStop": true,
+      "exitCode": 1,
+      "switches": 0,
+      "launches": 1,
+      "quotaDetected": true
+    }
+  ]
+}
