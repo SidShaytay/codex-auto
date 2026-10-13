@@ -1,11 +1,11 @@
 {
   "actualTTY": true,
   "syntheticOnly": true,
-  "generatedAt": "2026-10-13T19:45:47.503Z",
+  "generatedAt": "2026-10-13T19:48:16.913Z",
   "version": "0.4.0",
   "build": {
-    "commit": "6bc320bc8cd07ae46385abea2c7e68fe173d9999",
-    "dirty": true
+    "commit": "41cfafeba7104b0ad0e2654e0082f688d115ad1e",
+    "dirty": false
   },
   "sourceHashes": {
     "cli.js": "4eb1bfb21af1cc0c29b64760b8816fa4fe06a20686c0fadc4ebd7edbbe957cb4",

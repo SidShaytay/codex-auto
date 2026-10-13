@@ -1,10 +1,10 @@
 {
   "actualTTY": true,
   "syntheticOnly": true,
-  "generatedAt": "2026-10-13T19:45:44.949Z",
+  "generatedAt": "2026-10-13T19:48:14.186Z",
   "build": {
-    "commit": "6bc320bc8cd07ae46385abea2c7e68fe173d9999",
-    "dirty": true
+    "commit": "41cfafeba7104b0ad0e2654e0082f688d115ad1e",
+    "dirty": false
   },
   "sourceHashes": {
     "cli.js": "4eb1bfb21af1cc0c29b64760b8816fa4fe06a20686c0fadc4ebd7edbbe957cb4",
@@ -25,7 +25,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 134
+      "elapsedMs": 141
     },
     {
       "shell": "/bin/bash",
@@ -41,7 +41,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 103
+      "elapsedMs": 99
     },
     {
       "shell": "/bin/bash",
@@ -57,7 +57,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 107
+      "elapsedMs": 100
     },
     {
       "shell": "/bin/bash",
@@ -89,7 +89,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 2629
+      "elapsedMs": 2619
     },
     {
       "shell": "/bin/bash",
@@ -105,7 +105,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 138
+      "elapsedMs": 140
     },
     {
       "shell": "/usr/bin/fish",
@@ -121,7 +121,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 103
+      "elapsedMs": 102
     },
     {
       "shell": "/usr/bin/fish",
@@ -169,7 +169,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 101
+      "elapsedMs": 91
     },
     {
       "shell": "/usr/bin/fish",
@@ -185,7 +185,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 2600
+      "elapsedMs": 2604
     },
     {
       "shell": "/usr/bin/fish",
@@ -201,7 +201,7 @@
       "restoredBeforeFetch": true,
       "terminalRestored": true,
       "timeoutAborted": true,
-      "elapsedMs": 96
+      "elapsedMs": 102
     }
   ]
 }
