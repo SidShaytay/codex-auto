@@ -1077,6 +1077,51 @@ console.log('available account resumed');
     }
   }, 15_000);
 
+  // Synthetic quota→prompt traces, not recovered bytes from a live incident.
+  // S34/S35: confirmed baseline failures; remove .fails when recovery is implemented.
+  test.fails.each([
+    { bound: true, noLf: '0' },
+    { bound: true, noLf: '1' },
+    { bound: false, noLf: '0' },
+    { bound: false, noLf: '1' }
+  ])('fresh quota before redraw recovers while alive: bound=$bound/noLf=$noLf', async ({ bound, noLf }) => {
+    const appHome = await createTempAppHome();
+    const codexHome = await createTempAppHome('codex-home-');
+    try {
+      await seedCodexHome(codexHome);
+      await seedState(appHome, {
+        version: 1, accounts: ['a', 'b'], currentIndex: 0,
+        preferredAccountName: 'a', lastSuccessfulAccount: null,
+        lastSessionId: null, updatedAt: '2026-04-17T00:00:00.000Z'
+      });
+      await seedAccount(appHome, 'a', { account: 'a', token: 'a-token' });
+      await seedAccount(appHome, 'b', { account: 'b', token: 'b-token' });
+      const startedAt = Date.now();
+      const result = await runManagedSession({
+        appHome, codexHome, workspaceDir: process.cwd(),
+        extraArgs: bound ? ['resume', 'session-redraw-regression'] : [],
+        codexCommand: `node ${path.resolve(process.cwd(), 'tests/fixtures/fake-codex.mjs')}`,
+        env: { ...process.env, SHELL: '/bin/bash',
+          FAKE_CODEX_SESSION_ID: 'session-redraw-regression',
+          FAKE_CODEX_STRUCTURED_REDRAW_QUOTA: '1',
+          // S34 must work independently of the bound structured reader.
+          // S35 has structured evidence but begins without a binding.
+          FAKE_CODEX_OMIT_STRUCTURED_QUOTA: bound ? '1' : '0',
+          FAKE_CODEX_STRUCTURED_QUOTA_NO_LF: noLf,
+          FAKE_CODEX_STRUCTURED_QUOTA_EXIT_DELAY_MS: '8000'
+        },
+        stdin: new TtyInputStream() as TtyInputStream & NodeJS.ReadStream,
+        stdout: new TtyCaptureStream(), stderr: new TtyCaptureStream(), interactive: true
+      });
+      expect(result).toMatchObject({ switchCount: 1, finalAccount: 'b', exhaustedAll: false, exitCode: 0 });
+      expect(Date.now() - startedAt).toBeLessThan(4000);
+      await expect(loadState(appHome)).resolves.toMatchObject({ lastSessionId: 'session-redraw-regression' });
+    } finally {
+      await cleanupTempDir(appHome);
+      await cleanupTempDir(codexHome);
+    }
+  }, 15_000);
+
   test('interactive cursor redraw finishes replay before quota rotation', async () => {
     const appHome = await createTempAppHome();
     const codexHome = await createTempAppHome('codex-home-');

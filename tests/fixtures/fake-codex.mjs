@@ -265,14 +265,16 @@ if (authText.includes('"account": "a"') || authText.includes('"account":"a"')) {
       if (process.env.FAKE_CODEX_STRUCTURED_QUOTA_LARGE_RECORD === '1') {
         appendFileSync(sessionFilePath, 'x'.repeat(300 * 1024) + '\n');
       }
-      appendFileSync(sessionFilePath, `${JSON.stringify({
-        timestamp: new Date().toISOString(),
-        type: 'event_msg',
-        payload: { type: 'task_complete', turn_id: 'fake-turn', error: {
-          codex_error_info: 'usage_limit_exceeded',
-          message: `You've hit your usage limit. Upgrade to Pro to purchase more credits or try again at ${primaryRetryAt}.`
-        } }
-      })}\n`);
+      if (process.env.FAKE_CODEX_OMIT_STRUCTURED_QUOTA !== '1') {
+        appendFileSync(sessionFilePath, `${JSON.stringify({
+          timestamp: new Date().toISOString(),
+          type: 'event_msg',
+          payload: { type: 'task_complete', turn_id: 'fake-turn', error: {
+            codex_error_info: 'usage_limit_exceeded',
+            message: `You've hit your usage limit. Upgrade to Pro to purchase more credits or try again at ${primaryRetryAt}.`
+          } }
+        })}\n`);
+      }
       if (process.env.FAKE_CODEX_STRUCTURED_QUOTA_NO_LF === '1') {
         process.stdout.write("■ You've hit your usage limit. To get more access now, send a request to your admin.");
       } else {

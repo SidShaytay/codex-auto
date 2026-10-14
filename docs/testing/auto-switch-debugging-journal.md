@@ -145,6 +145,14 @@ Added negative controls keep encrypted-content verification failures separate fr
 
 **Execution lesson:** a user request to capture evidence and notify them before restarting does not pause separately authorized development. Continue from the snapshot without live access; record an actual permission blocker rather than silently ending work.
 
+## 2026-10-14 — Establish failures before choosing an ownership boundary
+
+Four maintained synthetic regressions fail against unchanged9489433: bound/text-only and plain unbound/structured launches, each with LF or cursor-positioned quota followed by prompt. All wait for the fixture's8s natural exit without switching. `test.fails.each` explicitly tracks these known defects; a passing expected-failure check is not recovery acceptance. Split-chunk and delayed replay beyond five seconds still need coverage.
+
+An opt-in isolated native probe (`tests/runtime/quota-ownership-native.test.ts`, `CODEX_QUOTA_OWNERSHIP_NATIVE_BIN`) verifies selected0.162.1 behavior. An untrusted SessionStart hook blocks for approval without executing the helper or requesting the localhost provider. With blanket bypass enabled **only in the fake-home probe**, startup metadata arrives before the first localhost request. The clean matching official source is `rust-v0.162.1`/092d3ac. This establishes a startup capability, not selected-thread ownership after TUI transitions or an approved production design. Do not ship blanket hook-trust bypass or replace user hook arrays without preserving their semantics.
+
+Text-identical replay, quotes and fresh errors cannot be separated using terminal bytes alone. A new prompt does not establish freshness. The optional TUI recorder also is not an ownership shortcut: its outbound operation records contain input, while inbound app-event records omit selected-thread IDs. Prefer a proven causal signal; changing hook/config or transport boundaries requires explicit scope decisions. No runtime change, live access, credential access, installation or real terminal acceptance occurred. S33 remains incomplete.
+
 ## Journal maintenance
 
 Each new dated entry should contain:
